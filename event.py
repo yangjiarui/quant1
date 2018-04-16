@@ -6,20 +6,112 @@ events = queue.Queue()
 
 class EventBase(object):
     """
-    传递各种事件
+    传递各种事件，把order的属性传给event，并设定event的相关属性，包括：
+    feed, date, instrument, 
     """
 
     def __init__(self, order):
         self._order = order
+
+    @property
+    def order(self):
+        return self._order
+
+    @order.setter
+    def order(self, value):
+        self._order = value
+
+    @property
+    def feed(self):
+        return self._order.feed
+
+    @feed.setter
+    def feed(self, value):
+        self._order.set_feed(value)
+
+    @property
+    def units(self):
+        return self._order.units
+
+    @units.setter
+    def units(self, value):
+        self._order.set_units(value)
+
+    @property
+    def execute_type(self):
+        return self._order.execute_type
+
+    @execute_type.setter
+    def execute_type(self, value):
+        self._order.set_execute_type(value)
+
+    @property
+    def price(self):
+        return self._order.price
+
+    @price.setter
+    def price(self, value):
+        self._order.set_price(value)    
+
+    @property
+    def order_type(self):
+        return self._order.order_type
+
+    @order_type.setter
+    def order_type(self, value):
+        self._order.set_order_type(value)
+
+    @property
+    def date(self):
+        return self._order.date
+
+    @date.setter
+    def date(self, value):
+        self._order.set_date(value)
+
+    @property
+    def instrument(self):
+        return self._order.instrument
+
+    @instrument.setter
+    def instrument(self, value):
+        self._order.set_instrument(value)
+
+    @property
+    def per_comm(self):
+        return self._order.per_comm
+
+    @per_comm.setter
+    def per_comm(self, value):
+        self._order.set_per_comm(value)
+
+    @property
+    def per_margin(self):
+        return self._order.per_comm
+
+    @per_margin.setter
+    def per_margin(self, value):
+        self._order.set_per_margin(value)
+
+    @property
+    def mult(self):
+        return self._order.mult
+
+    @mult.setter
+    def mult(self, value):
+        self._order.set_mult(value)
 
 
 class MarketEvent(object):
     """
     市场信息事件，该事件会被传给Strategy
     """
-    def __init__(self, data):
+    def __init__(self, feed):
         self.type = 'Market'
-        self.data = data
+        self.feed = feed
+        self.instrument = feed.instrument
+        self.cur_bar = feed.bar
+
 
 class SignalEvent(EventBase):
     """

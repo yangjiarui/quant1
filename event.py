@@ -110,7 +110,11 @@ class MarketEvent(object):
         self.type = 'Market'
         self.feed = feed
         self.instrument = feed.instrument
-        self.cur_bar = feed.bar
+        self.cur_bar = feed.cur_bar
+        self.bar = feed.bar
+        self.per_comm = feed.per_comm
+        self.per_margin = feed.per_margin
+        self.mult = feed.mult
 
 
 class SignalEvent(EventBase):

@@ -1,24 +1,31 @@
 # coding:utf-8
 import abc
 from event import events, SignalEvent
+from indicator import Indicator
+from order import BuyOrder, SellOrder, ExitAllOrder
 
 
 class StrategyBase(abc.ABCMeta):
-    def __init__(self, marketevent):
+    def __init__(self, market_event):
         self._signal_list = []
-        self.marketevent = marketevent
+        self.market_event = market_event
 
-    def buy(self, units, price=None, code=None):
+        self.mult = market_event.mult
+        self.instrument = market_event.instrument
+        self.bar = market_event.bar
+        self.bar.set_instrument(self.instrument)
+
+    def buy(self, units, price=None, instrument=None):
         buy_order = BuyOrder(self.marketevent)
-        buy_order.execute(units=units, price=price, code=code)
+        buy_order.execute(units=units, price=price, instrument=instrument)
         self._signal_list.append(SignalEvent(buy_order))
     
-    def sell(self, units, price=None, code=None):
+    def sell(self, units, price=None, instrument=None):
         sell_order = SellOrder(self.marketevent)
-        sell_order.execute(units=units, price=price, code=code)
+        sell_order.execute(units=units, price=price, instrument=instrument)
         self._signal_list.append(SignalEvent(sell_order))
 
-    def exitall(self, code=None, price=None):
+    def exitall(self, instrument=None, price=None):
         exit_all_order = ExitallOrder(self.marketevent)
         if self.position[-1] < 0:
             exit_all_order.set_order_type('Buy')
@@ -29,14 +36,14 @@ class StrategyBase(abc.ABCMeta):
             return
         
         units = abs(self.position[-1])
-        exit_all_order.execute(units=units, price=price, code=code)
+        exit_all_order.execute(units=units, price=price, instrument=instrument)
         self._signal_list.append(SignalEvent(exit_all_order))
 
     def cancel(self):
         pass
     
     def __start(self):
-        self.__set_dataseries_code()
+        self.__set_dataseries_instrument()
         self.__set_indicator()
 
     def prenext(self):
@@ -58,7 +65,7 @@ class StrategyBase(abc.ABCMeta):
                 self._signal_list = [] if signal.units == 0 else [signal]
                 break
         for signal in self._signal_list:
-            if signal.code is self.code:
+            if signal.instrument is self.instrument:
                 events.put(signal)
 
     def stop(self):

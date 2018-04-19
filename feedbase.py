@@ -1,12 +1,12 @@
 # coding=utf-8
-from abc import ABCMeta, abstractmethod
+from abc import ABC, abstractmethod
 from datetime import datetime
 import csv
 from barbase import Current_bar, Bar
 from event import events, MarketEvent
 
 
-class DataHandler(ABCMeta):
+class DataHandler(ABC):
     def __init__(self, instrument, startdate, enddate):
         self.instrument = instrument
         self.startdate = startdate
@@ -52,8 +52,8 @@ class DataHandler(ABCMeta):
         return self._mult
 
     @property
-    def iteral_buffer(self):
-        return self._iteral_buffer
+    def _iteration_buffer(self):
+        return self._iteration_buffer
 
     @abstractmethod
     def load_data(self):  # 读取数据，需重写
@@ -151,7 +151,7 @@ class CSVDataReader(DataHandler):
         self.set_iteration_buffer(self.load_data())
 
         def _update():
-            bar = next(self.iteral_buffer)
+            bar = next(self._iteration_buffer)
             bar['date'] = self.__set_bar_date(bar)
 
             for i in bar:

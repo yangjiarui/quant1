@@ -92,9 +92,9 @@ class AvgPriceSeries(DataSeriesBase):
     _name = 'avg_price'
 
 
-class CommisionSeries(DataSeriesBase):
+class CommissionSeries(DataSeriesBase):
     """手续费"""
-    _name = 'commision'
+    _name = 'commission'
 
 
 class CashSeries(DataSeriesBase):
@@ -140,6 +140,12 @@ class UnrealizedGainAndLossSeries(DataSeriesBase):
     @property
     def low(self):
         return [i['unrealized_gain_and_loss_low'] for i in self._dict[self._instrument]]
+
+    def total_high(self, key=-1):
+        return self.total(key, 'unrealized_gain_and_loss_high')
+
+    def total_low(self, key=-1):
+        return self.total(key, 'unrealized_gain_and_loss_low')
 
 
 class BalanceSeries(DataSeriesBase):

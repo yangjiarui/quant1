@@ -1,5 +1,7 @@
 # coding:utf-8
 import dataseries
+from copy import copy
+from event import events
 
 
 class FillBase(object):
@@ -267,4 +269,248 @@ class BacktestFill(FillBase):
     def _update_trade_list(self, fill_event):
         """
         根据具体交易情况更新交易列表trade_list
+        情况一：做多，若有空单，将空单逐个抵消，判断：
+                            若抵消后还有剩余多单，则多开一个多单
+                            若无剩余多单，则修改原空单为多单
+        情况二：做空，若有多单，将多单逐个抵消，判断：
+                            若抵消后还有剩余空单，则多开一个空单
+                            若无剩余空单，则修改原多单为空单
+        情况三：全部平仓，若有单，将空单和多单全部抵消
+        情况四：触发止盈、止损、移动止损，对应的单相互抵消
         """
+        f = fill_event
+        try:
+            last_position = self.position[-2]  # 上一个仓位
+        except IndexError:
+            last_position = 0
+        # 情况四中不同种类的单
+        extra_list = [
+            'TAKE_PROFIT_ORDER', 'STOP_LOSS_ORDER', 'TRAILING_STOP_ORDER']
+
+        def get_re_profit(trade_units):
+            re_profit = (f.price - i.price) * trade_units * f.mult * i.direction
+            self.realized_gain_and_loss.add(f.date, re_profit)
+
+            if self.realized_gain_and_loss.date[-2] is f.date:
+                new_realized_g_l = (
+                    self.realized_gain_and_loss[-1] + self.realized_gain_and_loss[-2])
+                self.realized_gain_and_loss.update_cur(new_realized_g_l)
+                self.realized_gain_and_loss.del_last()
+
+        # 首先判断是否有情况四发生，即止盈、止损、移动止损
+        if f.execute_type in extra_list:
+            for i in self._trade_list:
+                if f.order.parent is i:  # 找到父类，删除原空单，计算利润
+                    self._trade_list.remove(i)
+                    self._completed_list.append((copy(i), copy(f)))
+                    f.units = 0
+
+        else:
+            # 判断情况一，即做多的情况
+            if f.order_type == 'BUY' and last_position < 0:
+                for i in self._trade_list:
+                    # 剩余空单且品种相同
+                    if f.instrument is i.instrument and i.order_type == 'SELL':
+                        if f.units == 0:
+                            break
+                        if i.units > f.units:  # 空单大于多单，剩余空单
+                            index_i = self._trade_list.index(i)
+                            self._trade_list.pop(index_i)  # 删除原空单
+                            self._completed_list.append((copy(i), copy(f)))
+                            i.units -= f.units  # 修改抵消后剩余的空单
+                            get_re_profit(f.units)  # 用执行交易的部分计算利润
+                            f.units = 0  # 没有多单了，单位设为0
+
+                            if i.units != 0:
+                                # 修改后的单子放回原位
+                                self._trade_list.insert(index_i, i)
+
+                        elif i.units <= f.units:  # 空单小于多单，抵消后删除空单
+                            self._trade_list.remove(i)
+                            self._completed_list.append((copy(i), copy(f)))
+                            get_re_profit(i.units)  # 用执行交易的部分计算利润
+                            f.units -= i.units  # 修改多单仓位，若为0，后面会删除
+
+            # 判断情况二，即做空的情况
+            elif f.order_type == 'SELL' and last_position > 0:
+                for i in self._trade_list:
+                    # 剩余多单且品种相同
+                    if f.instrument is i.instrument and i.order_type == 'BUY':
+                        if f.units == 0:
+                            break
+                        if i.units > f.units:  # 多单大于空单，剩余多单
+                            index_i = self._trade_list.index(i)
+                            self._trade_list.pop(index_i)  # 删除原多单
+                            self._completed_list.append((copy(i), copy(f)))
+                            i.units -= f.units  # 修改抵消后剩余的多单
+                            get_re_profit(f.units)  # 用执行交易的部分计算利润
+                            f.units = 0  # 没有空单了，单位设为0
+
+                            if i.units != 0:
+                                # 修改后的单子放回原位
+                                self._trade_list.insert(index_i, i)
+
+                        elif i.units <= f.units:  # 多单小于空单，抵消后删除多单
+                            self._trade_list.remove(i)
+                            self._completed_list.append((copy(i), copy(f)))
+                            get_re_profit(i.units)  # 用执行交易的部分计算利润
+                            f.units -= i.units  # 修改空单仓位，若为0，后面会删除
+
+    def __to_list(self, fill_event):
+        """
+        根据情况将order放入trade_list或order_list
+        """
+        if fill_event.execute_type in ['LIMIT', 'STOP']:
+            self._order_list.append(fill_event)
+
+        else:
+            self._update_trade_list(fill_event)
+            if fill_event.units != 0:
+                self._trade_list.append(fill_event)
+
+    def run_fill(self, fill_event):
+        """每次指令发过来后，先直接记录下来，然后再去对冲仓位"""
+        self.set_dataseries_instrument(fill_event.instrument)
+        self.update_info(fill_event)
+        self.__to_list(fill_event)
+
+    def check_trade_list(self, feed):
+        """
+        存在漏洞，先判断的止盈止损，后判断移动止损
+        每次触发止盈止损后，发送一个相反的指令，并且自己对冲掉自己
+        因为假设有10个多单，5个止损，5个没止损，若止损时对冲5个没止损的单，则会产生错误
+        这种情况只会出现在同时多个Buy或者Sell，且有不同的stop或者limit
+        所以给多一个dad属性，用于回去寻找自己以便对冲自己
+        """
+
+        def set_take_stop(trade):
+            """止盈止损设定函数，一旦触发止盈止损，则BUY变为SELL，SELL变为BUY"""
+            trade.type = 'Order'
+            if trade.order_type == 'BUY':
+                trade.order_type = 'SELL'
+            else:
+                trade.order_type = 'BUY'
+            trade.take_profit = None
+            trade.stop_loss = None
+            trade.trailing_stop = None
+            trade.date = data_today['date']
+            events.put(trade)
+
+        data_today = feed.cur_bar.cur_data  # 今日的价格
+        # 以这个价格计算移动止损
+        cur_price = data_today[feed.trailing_stop_execute_mode]
+
+        # 检查止盈止损，触发交易
+        for trade in self._trade_list:
+            i = copy(trade)  # 必须要复制，不然会修改掉原来的订单
+            i.order = copy(trade.order)
+            i.order.set_parent(trade)  # 等下要回去原来的列表里面找父类
+
+            if i.instrument != feed.instrument:
+                continue  # 不是同个instrument无法比较，所以跳过
+            if i.take_profit is i.stop_loss is i.trailing_stop:
+                continue  # 没有止盈止损，所以跳过
+            if trade.date is data_today['date']:
+                continue  # 防止当天挂的单，因为昨天的价格而成交，不符合逻辑
+
+            # 检查移动止损,修改止损价格
+            if i.trailing_stop:
+                i.order.update_trailing_stop(cur_price)
+                i.trailing_stop = i.order.trailing_stop
+
+            # 根据指令判断，设置买或卖
+            try:
+                if i.execute_type in ['LIMIT', 'STOP']:
+                    continue
+
+                if i.take_profit and i.stop_loss:
+                    if (data_today['low'] < i.take_profit < data_today['high']
+                            and data_today['low'] < i.stop_loss < data_today['high']):
+                        print('注意：止盈止损出现矛盾，已选择止损')
+                        i.execute_type = 'STOP_LOSS_ORDER'
+                        i.price = i.stop_loss
+                        set_take_stop(i)
+                        continue
+                if i.take_profit:
+                    # 只有止盈，止盈价在最高价最低价之间或者
+                    # 当order_type为买入时，止盈价小于最低价或者
+                    # 当order_type为卖出时，止盈价大于最高价时    执行止盈
+                    if (data_today['low'] < i.take_profit < data_today['high']
+                        or (i.take_profit < data_today['low']
+                            if i.order_type == 'BUY' else False)
+                        or (i.take_profit > data_today['high']
+                            if i.order_type == 'SELL' else False)):
+                        i.execute_type = 'TAKE_PROFIT_ORDER'
+                        i.price = i.take_profit
+                        set_take_stop(i)
+                        continue
+                if i.stop_loss:
+                    # 只有止损，止损价在最高价最低价之间或者
+                    # 当order_type为买入时，止损价小于最高价或者
+                    # 当order_type为卖出时，止损价大于最低价时    执行止损
+                    if (data_today['low'] < i.stop_loss < data_today['high']
+                        or (i.stop_loss < data_today['high']
+                            if i.order_type == 'BUY' else False)
+                        or (i.stop_loss > data_today['low']
+                            if i.order_type == 'SELL' else False)):
+                        i.execute_type = 'STOP_LOSS_ORDER'
+                        i.price = i.stop_loss
+                        set_take_stop(i)
+                        continue
+                if i.trailing_stop:
+                    # 移动止损，移动止损价在最高价最低价之间或者
+                    # 当order_type为买入时，移动止损价大于最高价或者
+                    # 当order_type为卖出时，移动止损价小于最低价时    执行移动止损
+                    if (data_today['low'] < i.trailing_stop < data_today['high']
+                        or (i.trailing_stop > data_today['high']
+                            if i.order_type == 'BUY' else False)
+                        or (i.trailing_stop < data_today['low']
+                            if i.order_type == 'SELL' else False)):
+                        i.execute_type = 'TRAILING_STOP_ORDER'
+                        i.price = i.trailing_stop
+                        set_take_stop(i)
+                        continue
+            except:
+                raise SyntaxError('判断止盈止损部分有语法错误！')
+
+    def check_order_list(self, feed):
+        """检查挂单是否触发"""
+        data_today = feed.cur_bar.cur_data
+
+        def set_event(order_type, order, change_price=True):
+            self._order_list.remove(order)
+            if change_price:
+                order.price = data_today['open']
+            order.type = 'Order'
+            order.order_type = order_type
+            order.date = data_today['date']
+            order.execute_type = f'{order.execute_type} Triggered'
+            events.put(order)
+
+        for i in self._order_list:
+            if i.instrument != feed.instrument:
+                continue  # 不是同个instrument无法比较，所以跳过
+
+            # 多单挂单
+            if i.order_type == 'BUY':
+                # 执行方式为停损，且开盘价大于定价，则以开盘价买入
+                if i.execute_type == 'STOP' and data_today['open'] > i.price:
+                    set_event('BUY', i)
+                # 执行方式为限价，且开盘价小于定价，则以开盘价买入
+                if i.execute_type == 'LIMIT' and data_today['open'] < i.price:
+                    set_event('BUY', i)
+                # 定价在最低价和最高价之间，以原定价买入
+                elif data_today['low'] < i.price < data_today['high']:
+                    set_event('BUY', i, False)
+
+            # 空单挂单
+            if i.order_type == 'SELL':
+                # 执行方式为限价，且开盘价大于定价，则以开盘价卖出
+                if i.execute_type == 'LIMIT' and data_today['open'] > i.price:
+                    set_event('SELL', i)
+                # 执行方式为停损，且开盘价小于定价，则以开盘价卖出
+                elif i.execute_type == 'STOP' and data_today['open'] < i.price:
+                    set_event('SELL', i)
+                # 定价在最低价和最高价之间，以原定价买入
+                elif data_today['low'] < i.price < data_today['high']:
+                    set_event('SELL', i, False)

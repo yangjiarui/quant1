@@ -1,11 +1,12 @@
 # coding:utf-8
 import math
+import operator
+from collections import OrderedDict
 from datetime import datetime
 
 import numpy as np
 import pandas as pd
 from dateutil.relativedelta import relativedelta
-import operator
 from numpy.lib.stride_tricks import as_strided
 
 TRADING_DAYS_PER_YEAR = 252
@@ -62,7 +63,8 @@ def create_trade_log(completed_list, mult):
         d['exit_price'] = i[1].price
         d['pl_points'] = i[1].price - i[0].price
         d['execute_type'] = i[1].execute_type
-        d['re_profit'] = (f.price - i[0].price) * d['units'] * mult * i[0].direction
+        d['re_profit'] = (
+            (f.price - i[0].price) * d['units'] * mult * i[0].direction)
 
         comm = f.per_comm * mult
         d['commission'] = d['units'] * comm * f.price * 2
@@ -92,6 +94,8 @@ def _get_trade_bars(ts, trade_log, op):
             ll.append(len(ts[entry_date:exit_date].index))
     return ll
 
+
+# -------------------------总体数据---------------------------
 
 def beginning_balance(capital):
     """初始资金"""
@@ -305,6 +309,8 @@ def largest_pct_losing_trade(trade_log):
     return df.min() * 100
 
 
+# -------------------------连续次数---------------------------
+
 def _subsequence(string, c):
     """
     判断字符串中连续的字符c的个数，如string：'001000001111100'，c：'0'，
@@ -342,20 +348,20 @@ def max_consecutive_losing_trades(trade_log):
 
 
 def avg_bars_winning_trades(ts, trade_log):
-    """"""
+    """盈利交易中的平均 K 线数"""
     if num_winning_trades(trade_log) == 0:
         return 0
     return np.average(_get_trade_bars(ts, trade_log, operator.gt))
 
 
 def avg_bars_losing_trades(ts, trade_log):
-    """"""
+    """亏损交易中的平均 K 线数"""
     if num_losing_trades(trade_log) == 0:
         return 0
     return np.average(_get_trade_bars(ts, trade_log, operator.lt))
 
 
-# -------------------------回撤---------------------------
+# -------------------------回撤和回升---------------------------
 
 def max_closed_out_drawdown(close):
     """"""
@@ -369,14 +375,14 @@ def max_closed_out_drawdown(close):
     dd['peak'] = running_max[idx]
     dd['trough'] = close[idx]
 
-    dd['start_date'] = close[close == dd['peak']].index[0].strftime("%Y-%m-%d %H:%M:%S")
+    dd['start_date'] = (
+        close[close == dd['peak']].index[0].strftime("%Y-%m-%d %H:%M:%S"))
     dd['end_date'] = idx.strftime("%Y-%m-%d %H:%M:%S")
     close = close[close.index > idx]
 
     rd_mask = close > dd['peak']
     if rd_mask.any():
-        dd['recovery_date'] = \
-            close[rd_mask].index[0].strftime("%Y-%m-%d %H:%M:%S")
+        dd['recovery_date'] = close[rd_mask].index[0].strftime("%Y-%m-%d %H:%M:%S")
     else:
         dd['recovery_date'] = 'Not Recovered Yet'
 
@@ -400,13 +406,21 @@ def max_intra_day_drawdown(high, low):
 
     rd_mask = high > dd['peak']
     if rd_mask.any():
-        dd['recovery_date'] = \
-            high[rd_mask].index[0].strftime("%Y-%m-%d %H:%M:%S")
+        dd['recovery_date'] = high[rd_mask].index[0].strftime("%Y-%m-%d %H:%M:%S")
     return dd
 
 
 def _windowed_view(x, window_units):
     """
+    为一个一维的数组创建一个二维的窗口视图（数组形式），
+    x：一维数组
+    例：
+    >>> x = np.array([1, 2, 3, 4, 5, 6])
+    >>> _windowed_view(x, 3)
+    array([[1, 2, 3],
+           [2, 3, 4],
+           [3, 4, 5],
+           [4, 5, 6]])
     """
     y = as_strided(x, shape=(x.size - window_units + 1, window_units),
                    strides=(x.strides[0], x.strides[0]))
@@ -415,6 +429,10 @@ def _windowed_view(x, window_units):
 
 def rolling_max_dd(ser, period, min_periods=1):
     """
+    计算ser中滚动的最大回撤
+    ser： Series
+    min_periods： 1 <= min_periods <= window_units
+    Return： 一维数组，长度为 len(x) - min_periods + 1
     """
     window_units = period + 1
     x = ser.values
@@ -431,6 +449,10 @@ def rolling_max_dd(ser, period, min_periods=1):
 
 def rolling_max_ru(ser, period, min_periods=1):
     """
+    计算ser中的最大回升
+    ser： Series
+    min_periods： 1 <= min_periods <= window_units
+    Return： 一维数组，长度为 len(x) - min_periods + 1
     """
     window_units = period + 1
     x = ser.values
@@ -444,3 +466,261 @@ def rolling_max_ru(ser, period, min_periods=1):
     rmru = ru.max(axis=1)
     return pd.Series(data=rmru, index=ser.index, name=ser.name)
 
+
+# -------------------------百分比变化---------------------------
+
+def pct_change(close, period):
+    """数据上移period个位置，计算其变化的百分比"""
+    diff = (close.shift(-period) - close) / close * 100
+    diff.dropna(inplace=True)
+    return diff
+
+
+# -------------------------比率---------------------------
+
+def sharpe_ratio(rets, risk_free=0.00, period=TRADING_DAYS_PER_YEAR):
+    """
+    根据每日的收益计算每日的夏普比率
+    rets：一天的array或资金列表
+    risk_free：无风险利率，默认为0%
+    Return：每日的夏普比率
+    """
+    dev = np.std(rets, axis=0)
+    mean = np.mean(rets, axis=0)
+    sharpe = (mean * period - risk_free) / (dev * np.sqrt(period))
+    return sharpe
+
+
+def sortino_ratio(rets, risk_free=0.00, period=TRADING_DAYS_PER_YEAR):
+    """
+    根据每日的收益计算每日的索提诺比率，
+    rets：一天的array或资金列表
+    risk_free：无风险利率，默认为0%
+    Return：每日的索提诺比率
+    与夏普比率(Sharpe Ratio)有相似之处，但索提诺比率运用下偏标准差而不是总标准差，
+    以区别不利和有利的波动。和夏普比率类似，这一比率越高，表明基金承担相同单位下行风
+    险能获得更高的超额回报率。索提诺比率可以看做是夏普比率在衡量对冲基金/私募基金时
+    的一种修正方式。
+    """
+    mean = np.mean(rets, axis=0)
+    negative_rets = rets[rets < 0]
+    dev = np.std(negative_rets, axis=0)
+    sortino = (mean * period - risk_free) / (dev * np.sqrt(period))
+    return sortino
+
+
+# -------------------------产生各种统计数据的主要调用函数---------------------------
+
+def stats(ts, trade_log, dbal, start, end, capital):
+    """
+    计算交易后的统计数据
+    Parameters：
+        ts : Dataframe
+            期货价格的 Time series (date, high, low, close, volume)
+        trade_log : Dataframe
+            交易日志 (entry_date, entry_price, long_short, qty,
+            exit_date, exit_price, pl_points, re_profit, cumul_total)
+        dbal : Dataframe
+            每日的余额 (date, high, low, close)
+        start : datetime
+            第一次买入的日期
+        end : datetime
+            最后一次卖出的日期
+        capital : float
+            初始资金
+    Returns：
+        stats : 各个统计量的 Series
+    """
+
+    stats = OrderedDict()
+
+    # 总体数据
+    stats['start'] = start.strftime("%Y-%m-%d %H:%M:%S")
+    stats['end'] = end.strftime("%Y-%m-%d %H:%M:%S")
+    stats['beginning_balance'] = beginning_balance(capital)
+    stats['ending_balance'] = ending_balance(dbal)
+    stats['unrealized_profit'] = (
+        ending_balance(dbal) - total_net_profit(trade_log) - (
+            beginning_balance(capital)))
+    stats['total_net_profit'] = total_net_profit(trade_log)
+    stats['gross_profit'] = gross_profit(trade_log)
+    stats['gross_loss'] = gross_loss(trade_log)
+    stats['profit_factor'] = profit_factor(trade_log)
+    stats['return_on_initial_capital'] = (
+        return_on_initial_capital(trade_log, capital))
+    cagr = annual_return_rate(dbal['balance'][-1], capital, start, end)
+    stats['annual_return_rate'] = cagr
+    stats['trading_period'] = trading_period(start, end)
+    stats['pct_time_in_market'] = (
+        pct_time_in_market(ts, trade_log, start, end))
+
+    # 次数统计
+    stats['total_num_trades'] = total_num_trades(trade_log)
+    stats['num_winning_trades'] = num_winning_trades(trade_log)
+    stats['num_losing_trades'] = num_losing_trades(trade_log)
+    stats['num_even_trades'] = num_even_trades(trade_log)
+    stats['pct_profitable_trades'] = pct_profitable_trades(trade_log)
+
+    # 盈利与亏损
+    stats['avg_profit_per_trade'] = avg_profit_per_trade(trade_log)
+    stats['avg_profit_per_winning_trade'] = (
+        avg_profit_per_winning_trade(trade_log))
+    stats['avg_loss_per_losing_trade'] = avg_loss_per_losing_trade(trade_log)
+    stats['ratio_avg_profit_win_loss'] = ratio_avg_profit_win_loss(trade_log)
+    stats['largest_profit_winning_trade'] = (
+        largest_profit_winning_trade(trade_log))
+    stats['largest_loss_losing_trade'] = largest_loss_losing_trade(trade_log)
+
+    # 点数
+    stats['num_winning_points'] = num_winning_points(trade_log)
+    stats['num_losing_points'] = num_losing_points(trade_log)
+    stats['total_net_points'] = total_net_points(trade_log)
+    stats['avg_points'] = avg_points(trade_log)
+    stats['largest_points_winning_trade'] = (
+        largest_points_winning_trade(trade_log))
+    stats['largest_points_losing_trade'] = (
+        largest_points_losing_trade(trade_log))
+    stats['avg_pct_gain_per_trade'] = avg_pct_gain_per_trade(trade_log)
+    stats['largest_pct_winning_trade'] = largest_pct_winning_trade(trade_log)
+    stats['largest_pct_losing_trade'] = largest_pct_losing_trade(trade_log)
+
+    # 连续次数
+    stats['max_consecutive_winning_trades'] = (
+        max_consecutive_winning_trades(trade_log))
+    stats['max_consecutive_losing_trades'] = (
+        max_consecutive_losing_trades(trade_log))
+    stats['avg_bars_winning_trades'] = (
+        avg_bars_winning_trades(ts, trade_log))
+    stats['avg_bars_losing_trades'] = avg_bars_losing_trades(ts, trade_log)
+
+    # 回撤
+    dd = max_closed_out_drawdown(dbal['balance'])
+    stats['max_closed_out_drawdown'] = dd['max']
+    stats['max_closed_out_drawdown_start_date'] = dd['start_date']
+    stats['max_closed_out_drawdown_end_date'] = dd['end_date']
+    stats['max_closed_out_drawdown_recovery_date'] = dd['recovery_date']
+    stats['drawdown_recovery'] = _difference_in_years(
+        datetime.strptime(dd['start_date'], "%Y-%m-%d %H:%M:%S"),
+        datetime.strptime(dd['end_date'], "%Y-%m-%d %H:%M:%S")) * -1
+    stats['drawdown_annualized_return'] = dd['max'] / cagr
+    dd = max_intra_day_drawdown(dbal['balance_high'], dbal['balance_low'])
+    stats['max_intra_day_drawdown'] = dd['max']
+    dd = rolling_max_dd(dbal['balance'], TRADING_DAYS_PER_YEAR)
+    stats['avg_yearly_closed_out_drawdown'] = np.average(dd)
+    stats['max_yearly_closed_out_drawdown'] = min(dd)
+    dd = rolling_max_dd(dbal['balance'], TRADING_DAYS_PER_MONTH)
+    stats['avg_monthly_closed_out_drawdown'] = np.average(dd)
+    stats['max_monthly_closed_out_drawdown'] = min(dd)
+    dd = rolling_max_dd(dbal['balance'], TRADING_DAYS_PER_WEEK)
+    stats['avg_weekly_closed_out_drawdown'] = np.average(dd)
+    stats['max_weekly_closed_out_drawdown'] = min(dd)
+
+    # 回升
+    ru = rolling_max_ru(dbal['balance'], TRADING_DAYS_PER_YEAR)
+    stats['avg_yearly_closed_out_runup'] = np.average(ru)
+    stats['max_yearly_closed_out_runup'] = ru.max()
+    ru = rolling_max_ru(dbal['balance'], TRADING_DAYS_PER_MONTH)
+    stats['avg_monthly_closed_out_runup'] = np.average(ru)
+    stats['max_monthly_closed_out_runup'] = max(ru)
+    ru = rolling_max_ru(dbal['balance'], TRADING_DAYS_PER_WEEK)
+    stats['avg_weekly_closed_out_runup'] = np.average(ru)
+    stats['max_weekly_closed_out_runup'] = max(ru)
+
+    # 百分比变化
+    pc = pct_change(dbal['balance'], TRADING_DAYS_PER_YEAR)
+    stats['pct_profitable_years'] = (pc > 0).sum() / len(pc) * 100
+    stats['best_year'] = pc.max()
+    stats['worst_year'] = pc.min()
+    stats['avg_year'] = np.average(pc)
+    stats['annual_std'] = pc.std()
+    pc = pct_change(dbal['balance'], TRADING_DAYS_PER_MONTH)
+    stats['pct_profitable_months'] = (pc > 0).sum() / len(pc) * 100
+    stats['best_month'] = pc.max()
+    stats['worst_month'] = pc.min()
+    stats['avg_month'] = np.average(pc)
+    stats['monthly_std'] = pc.std()
+    pc = pct_change(dbal['balance'], TRADING_DAYS_PER_WEEK)
+    stats['pct_profitable_weeks'] = (pc > 0).sum() / len(pc) * 100
+    stats['best_week'] = pc.max()
+    stats['worst_week'] = pc.min()
+    stats['avg_week'] = np.average(pc)
+    stats['weekly_std'] = pc.std()
+
+    # 比率
+    stats['sharpe_ratio'] = sharpe_ratio(dbal['balance'].pct_change())
+    stats['sortino_ratio'] = sortino_ratio(dbal['balance'].pct_change())
+
+    for i, j in stats.items():
+        if type(j) is not str:
+            stats[i] = round(j, 3)
+
+    return stats
+
+
+# -------------------------下列函数调用前需先调用stats()---------------------------
+
+def summary(stats, *metrics):
+    """将stats的数据以DataDrame格式返回，必须先调用stats()函数"""
+    index = []
+    columns = ['strategy']
+    data = []
+
+    for metric in metrics:
+        index.append(metric)
+        data.append(stats[metric])
+
+    df = pd.DataFrame(data, columns=columns, index=index)
+    return df
+
+
+def summary2(stats, benchmark_stats, *metrics):
+    """将stats的数据和基准的stats数据以DataDrame格式返回，必须先调用stats()函数"""
+    index = []
+    columns = ['strategy', 'benchmark']
+    data = []
+
+    for metric in metrics:
+        index.append(metric)
+        data.append((stats[metric], benchmark_stats[metric]))
+
+    df = pd.DataFrame(data, columns=columns, index=index)
+    return df
+
+
+def summary3(stats, benchmark_stats, *extras):
+    """
+    将stats的数据和基准的stats数据以DataDrame格式返回，必须先调用stats()函数
+    同时，可添加额外参数计算stats的数据和基准的stats数据
+    """
+    index = ['annual_return_rate',
+             'max_closed_out_drawdown',
+             'drawdown_annualized_return',
+             'pct_profitable_months',
+             'best_month',
+             'worst_month',
+             'sharpe_ratio',
+             'sortino_ratio']
+    columns = ['strategy', 'benchmark']
+    data = [(stats['annual_return_rate'],
+             benchmark_stats['annual_return_rate']),
+            (stats['max_closed_out_drawdown'],
+             benchmark_stats['max_closed_out_drawdown']),
+            (stats['drawdown_annualized_return'],
+             benchmark_stats['drawdown_annualized_return']),
+            (stats['pct_profitable_months'],
+             benchmark_stats['pct_profitable_months']),
+            (stats['best_month'],
+             benchmark_stats['best_month']),
+            (stats['worst_month'],
+             benchmark_stats['worst_month']),
+            (stats['sharpe_ratio'],
+             benchmark_stats['sharpe_ratio']),
+            (stats['sortino_ratio'],
+             benchmark_stats['sortino_ratio'])]
+
+    for extra in extras:
+        index.append(extra)
+        data.append((stats[extra], benchmark_stats[extra]))
+
+    df = pd.DataFrame(data, columns=columns, index=index)
+    return df

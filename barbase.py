@@ -77,6 +77,10 @@ class Bar(object):
         """清空数据"""
         self._bar_dict = {}
 
+    def _combine_all_feed(self, new_bar_dict):
+        """只运行一次，将所有feed整合到一起"""
+        self._bar_dict.update(new_bar_dict)
+
     def __getitem_func(self, given):
         if isinstance(given, slice):
             """处理切片对象"""

@@ -122,23 +122,23 @@ class SignalEvent(EventBase):
     交易信号事件，该事件会被传给Portfolio
     """
     def __init__(self, order):
-        super(SignalEvent, self).__init__(order)
+        super().__init__(order)
         self.type = 'Signal'
 
 
 class OrderEvent(EventBase):
     """
-    交易信息事件，该事件会被传给Execution
+    交易信息事件，该事件会被传给Broker
     """
     def __init__(self, order):
-        super(OrderEvent, self).__init__(order)
+        super().__init__(order)
         self.type = 'Order'
 
 
-class RecordEvent(EventBase):
+class FillEvent(EventBase):
     """
-    完成交易后产生的事件，该事件将信息集合成交易记录
+    执行交易事件
     """
     def __init__(self, order):
-        super(RecordEvent, self).__init__(order)
-        self.type = 'Record'
+        super().__init__(order)
+        self.type = 'Fill'

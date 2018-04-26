@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod
 from event import events, SignalEvent
 from indicator import Indicator
 from order import BuyOrder, SellOrder, ExitAllOrder
+from logging_backtest import logger
 
 
 class StrategyBase(ABC):
@@ -158,10 +159,10 @@ class StrategyBase(ABC):
             self.next()
         except Warning:
             date = str(self.market_event.cur_bar.cur_date)
-            print('{} 信号不够，不发生交易'.format(date))
+            logger.info('{} 信号不够，不发生交易'.format(date))
         except IndexError:
             date = str(self.market_event.cur_bar.cur_date)
-            print('{} 数据不够，不发生交易'.format(date))
+            logger.info('{} 数据不够，不发生交易'.format(date))
 
     def run_strategy(self):
         self.__start()

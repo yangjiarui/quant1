@@ -1,6 +1,7 @@
 # coding:utf-8
 from abc import ABC, abstractmethod
 from event import events, FillEvent
+from logging_backtest import logger
 
 
 class BrokerBase(ABC):
@@ -73,11 +74,12 @@ class Broker(BrokerBase):
             'MARKET', 'LIMIT', 'STOP', 'CLOSE_ALL', 'STOP_LOSS_ORDER',
             'TAKE_PROFIT_ORDER', 'TRAILING_STOP_ORDER'
         ]
-        oe = self.order_event
-        return (
-            self.fill.cash[-1] > oe.per_margin * oe.units * oe.price * oe.mult
-            + self.fill.margin[-1] * oe.direction
-            or oe.execute_type in execute_type)
+        check_results = self.fill.cash[-1] > (
+            self.order_event.per_margin * self.order_event.units *
+            self.order_event.price * self.order_event.mult +
+            self.fill.margin[-1] * self.order_event.direction
+        ) or self.order_event.execute_type in execute_type
+        return check_results
 
     def check_after(self):
         """检查Order发送后是否执行成功"""
@@ -97,7 +99,7 @@ class Broker(BrokerBase):
             self.change_status('SUBMITTED')
             self.notify()
         else:
-            print('现金不够，本次交易取消')
+            logger.info('现金不够，本次交易取消')
 
     def prenext(self):
         pass
@@ -118,7 +120,7 @@ class Broker(BrokerBase):
 
     def notify(self):
         if self._notify:
-            print('{}, {}, {}, {} @ {}, units: {}, execute: {}'.format(
+            logger.info('{}, {}, {}, {} @ {}, units: {}, execute: {}'.format(
                 self.order_event.date, self.order_event.instrument,
                 self.order_event.order_type, self.order_event.status,
                 self.order_event.price, self.order_event.units,

@@ -4,6 +4,7 @@ from datetime import datetime
 import csv
 from barbase import Current_bar, Bar
 from event import events, MarketEvent
+from logging_backtest import logger
 
 
 class DataHandler(ABC):
@@ -38,6 +39,9 @@ class DataHandler(ABC):
 
     def set_mult(self, value):
         self._mult = value
+
+    def set_trailing_stop_execute_mode(self, value):
+        self._trailing_stop_execute_mode = value
 
     @property
     def per_comm(self):
@@ -180,6 +184,6 @@ class CSVDataReader(DataHandler):
             pass
 
         except StopIteration:
-            print("不可能的")
+            logger.info("不可能的")
 
         self.preload_bar_list.reverse()

@@ -4,9 +4,12 @@ from datetime import datetime
 import csv
 from barbase import Current_bar, Bar
 from event import events, MarketEvent
+from logging_backtest import logger
 
 
 class DataHandler(ABC):
+    date_format = '%Y-%m-%d %H:%M:%S'
+
     def __init__(self, instrument, startdate, enddate):
         self.instrument = instrument
         self.startdate = startdate
@@ -39,21 +42,40 @@ class DataHandler(ABC):
     def set_mult(self, value):
         self._mult = value
 
+    def set_trailing_stop_execute_mode(self, value):
+        self._trailing_stop_execute_mode = value
+
     @property
     def per_comm(self):
         return self._per_comm
+
+    @per_comm.setter
+    def per_comm(self, value):
+        self._per_comm = value
 
     @property
     def per_margin(self):
         return self._per_margin
 
+    @per_margin.setter
+    def per_margin(self, value):
+        self._per_margin = value
+
     @property
     def mult(self):
         return self._mult
 
+    @mult.setter
+    def mult(self, value):
+        self._mult = value
+
     @property
-    def _iteration_buffer(self):
+    def iteration_buffer(self):
         return self._iteration_buffer
+
+    @iteration_buffer.setter
+    def iteration_buffer(self, value):
+        self._iteration_buffer = value
 
     @abstractmethod
     def load_data(self):  # 读取数据，需重写
@@ -87,24 +109,30 @@ class DataHandler(ABC):
 
 class CSVDataReader(DataHandler):
     """识别csv数据中的数据，包括date、open、high、low、close"""
-    date_format = '%Y/%m/%d %H:%M:%S'
+    date_format = '%Y-%m-%d %H:%M:%S'
 
     def __init__(self, datapath, instrument, startdate=None, enddate=None):
-        super().__init__(self, instrument, startdate, enddate)
+        super().__init__(instrument, startdate, enddate)
 
         self.datapath = datapath
+        self.__set_date()
 
     def __set_date(self):
         """将输入的日期转换成datetime对象"""
         if self.startdate:
+            print(self.startdate)
             self.startdate = datetime.strptime(self.startdate,
-                                               "%Y-%m-%d %H:%M")
+                                               "%Y-%m-%d")
+            print(self.startdate)
         if self.enddate:
-            self.enddate = datetime.strptime(self.enddate, "%Y-%m-%d %H:%M")
+            print(self.enddate)
+            self.enddate = datetime.strptime(self.enddate, "%Y-%m-%d")
+            print(self.enddate)
 
     def __set_bar_date(self, bar):
         """将bar中的date识别为日期格式"""
-        date = bar['date']
+        date = bar['time']
+        print(date)
         return datetime.strptime(str(date), self.date_format).strftime(
             self.date_format)
 
@@ -112,6 +140,7 @@ class CSVDataReader(DataHandler):
         def __update():
             new_bar = next(self._iteration_data)  # 获取迭代数据的下一组数据
             new_bar['date'] = self.__set_bar_date(new_bar)
+            print('new_bar: ', new_bar)
             # 将new_bar中的OHLC等数值转换为float
             for i in new_bar:
                 try:
@@ -152,6 +181,7 @@ class CSVDataReader(DataHandler):
 
         def _update():
             bar = next(self._iteration_buffer)
+            print('bar: ', bar)
             bar['date'] = self.__set_bar_date(bar)
 
             for i in bar:
@@ -163,6 +193,7 @@ class CSVDataReader(DataHandler):
 
         try:
             bar = _update()
+            print('barr: ', bar)
             if self.startdate:
                 while datetime.strptime(bar["date"],
                                         self.date_format) < self.startdate:
@@ -180,6 +211,10 @@ class CSVDataReader(DataHandler):
             pass
 
         except StopIteration:
-            print("不可能的")
+            logger.info("不可能的")
 
         self.preload_bar_list.reverse()
+
+
+class CSV(CSVDataReader):
+    date_format = '%Y-%m-%d %H:%M:%S'

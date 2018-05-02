@@ -2,6 +2,7 @@
 import dataseries
 from copy import copy
 from event import events
+from logging_backtest import logger
 
 
 class FillBase(object):
@@ -264,7 +265,7 @@ class BacktestFill(FillBase):
         if self.balance[-1] <= 0 or self.cash[-1] <= 0:
             for feed in feed_list:
                 feed.continue_backtest = False
-            print('警告：策略已造成爆仓！')
+            logger.info('警告：策略已造成爆仓！')
 
     def _update_trade_list(self, fill_event):
         """
@@ -426,7 +427,7 @@ class BacktestFill(FillBase):
                 if i.take_profit and i.stop_loss:
                     if (data_today['low'] < i.take_profit < data_today['high']
                             and data_today['low'] < i.stop_loss < data_today['high']):
-                        print('注意：止盈止损出现矛盾，已选择止损')
+                        logger.info('注意：止盈止损出现矛盾，已选择止损')
                         i.execute_type = 'STOP_LOSS_ORDER'
                         i.price = i.stop_loss
                         set_take_stop(i)

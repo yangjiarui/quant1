@@ -1,6 +1,7 @@
 # coding:utf-8
 from queue import Queue, Empty
 from threading import Thread, Timer
+from logging_backtest import logger
 
 
 class EventEngine(object):
@@ -106,7 +107,7 @@ class MultiStrategy(object):
         event = Event(type_=STRATEGY)
         event.dict['action'] = 'buy buy buy'
         self.__event_engine.send_event(event)
-        print('产生新的策略')
+        logger.info('产生新的策略')
 
 
 class OrderListener(object):
@@ -114,8 +115,8 @@ class OrderListener(object):
         self.__order_id = order_id
 
     def order(self, event):
-        print('{}, 有新的交易待处理'.format(self.__order_id))
-        print('this event says {}'.format(event.dict['action']))
+        logger.info('{}, 有新的交易待处理'.format(self.__order_id))
+        logger.info('this event says {}'.format(event.dict['action']))
 
 
 def test():

@@ -1,4 +1,5 @@
 # coding:utf-8
+from logging_backtest import logger
 
 
 def dict_to_table(result_dict):
@@ -18,7 +19,7 @@ def dict_to_table(result_dict):
 
     table_str = '{}\n{}{}'.format(header_footer, ''.join(data_list),
                                   header_footer)
-    print(table_str)
+    logger.info(table_str)
 
 
 if __name__ == '__main__':

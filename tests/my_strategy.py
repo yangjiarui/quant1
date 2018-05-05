@@ -53,3 +53,4 @@ trade.set_notify()
 trade.run()
 logger.info(trade.get_trade_log('IF'))
 trade.plot(instrument='IF')
+

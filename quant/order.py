@@ -42,10 +42,14 @@ class OrderData(object):
             self.direction = -1.0
 
     def __set_price(self):
-        """根据execute_mode即开仓平仓，计算价格"""
+        """
+        根据execute_mode即开仓平仓，计算价格
+        更改结算价为当条bar的收盘价
+        """
         logger.info('self.execute_mode: {}'.format(self.execute_mode))
         if self.execute_mode is 'open':
-            self.execute_mode_price = self._cur_bar.next_open
+            # self.execute_mode_price = self._cur_bar.next_open
+            self.execute_mode_price = self._cur_bar.cur_close
         elif self.execute_mode is 'close':
             self.execute_mode_price = self._cur_bar.cur_close
 

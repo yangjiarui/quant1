@@ -29,6 +29,7 @@ class DataHandler(ABC):
         self._iteration_data = None  # 给get_new_bar用的
         self._execute_mode = None
         self._trailing_stop_execute_mode = None
+        self.skipped = False
 
     def set_per_comm(self, value):
         self._per_comm = value
@@ -133,8 +134,12 @@ class DataHandler(ABC):
         self.get_new_bar()
 
     def next(self):
+        if not self.skipped:
+            self.skipped = True
+            return
         self.__update_bar()
         events.put(MarketEvent(self))
+        logger.info('-----------------------------------------')
 
 
 class CSVDataReader(DataHandler):
@@ -183,10 +188,10 @@ class CSVDataReader(DataHandler):
             new_bar = __update()
             # 根据输入的日期判断数据的范围，从起始时间开始，不断产生new_bar，到结束时间为止
             new_bar_date = datetime.strptime(new_bar['time'],
-                                             self.date_format)  # 为什么未更新？？？
+                                             self.date_format)
             if self.startdate:
-                logger.info("new_bar['time']: {}".format(new_bar['time']))
-                while new_bar_date < self.startdate:
+                # logger.info("new_bar['time']: {}".format(new_bar['time']))
+                while new_bar_date <= self.startdate:
                     # logger.info('new_bar_date: {}'.format(new_bar_date))
                     # logger.info('startdate: {}'.format(self.startdate))
                     # logger.info('type of startdate: {}'.format(
@@ -200,7 +205,7 @@ class CSVDataReader(DataHandler):
             if self.enddate:
                 while new_bar_date > self.enddate:
                     raise StopIteration
-
+            logger.info('new_bar in feedbase: {}'.format(new_bar))
             self.cur_bar.add_new_bar(new_bar)
 
         except StopIteration:
@@ -210,7 +215,7 @@ class CSVDataReader(DataHandler):
         """
         产生一个OrderedDict，第一行作为filedname，即OHLC
         每次调用产生一个新的OrderedDict
-        OrderedDict([('date', '2017/5/27 1:32:00'),
+        OrderedDict([('time', '2017/5/27 1:32:00'),
                      ('open', '222.2'), ('high', '333.3'),
                      ('low', '111.1'), ('close', '230.4')])
         """

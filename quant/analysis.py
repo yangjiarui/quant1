@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 from dateutil.relativedelta import relativedelta
 from numpy.lib.stride_tricks import as_strided
+from .logging_backtest import logger
 
 TRADING_DAYS_PER_YEAR = 252
 TRADING_DAYS_PER_MONTH = 20
@@ -51,13 +52,22 @@ def create_trade_log(completed_list, mult):
     平仓日期、平仓价格、执行类型、收益、佣金及总收益等
     """
     trade_log_list = []
+    # logger.info('completed_list: {}'.format(completed_list))
+    logger.info('len(completed_list): {}'.format(len(completed_list)))
     for i in completed_list:
+        # logger.info('i[0]: {}'.format(i[0]))
+        # logger.info('i[1]: {}'.format(i[1]))
         f = i[1]
 
         d = {}
         d['entry_date'] = i[0].date
         d['entry_price'] = i[0].price
         d['order_type'] = i[0].order_type
+        logger.info('i[0].date in analysis: {}'.format(i[0].date))
+        logger.info('i[0].price in analysis: {}'.format(i[0].price))
+        logger.info('i[0].order_type in analysis: {}'.format(i[0].order_type))
+        logger.info('i[0].units in analysis: {}'.format(i[0].units))
+        logger.info('i[1].units in analysis: {}'.format(i[1].units))
         d['units'] = round(min(i[0].units, i[1].units), 3)
         d['exit_date'] = i[1].date
         d['exit_price'] = i[1].price

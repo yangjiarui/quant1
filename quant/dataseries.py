@@ -10,12 +10,15 @@ class DataSeriesBase(object):
 
     def __init__(self):
         self._dict = {}
+        self.old_date = None
 
     def __getitem__(self, key):
-        print('self._instrument: {}'.format(self._instrument))
-        print(key)
-        print(self._name)
-        print(self._dict[self._instrument][key][self._name])
+        # print('self._instrument: {}'.format(self._instrument))
+        # print(key)
+        # print(self._name)
+        # logger.info(
+        #     'self._dict[self._instrument][key][self._name]: {}'.format(
+        #         self._dict[self._instrument][key][self._name]))
         return self._dict[self._instrument][key][self._name]
 
     def initialize(self, instrument, initial):
@@ -25,8 +28,14 @@ class DataSeriesBase(object):
         self._instrument = instrument
 
     def add(self, date, value):
-        self._dict[self._instrument].append({'date': date, self._name: value})
-        logger.info('self._dict: {}'.format(self._dict))
+        if self.old_date != date:
+            if self._dict[self._instrument][0]['date'] == 'start':
+                self._dict[self._instrument] = []
+            self._dict[self._instrument].append({'date': date, self._name: value})
+            # logger.info('self._dict in dataseries: {}'.format(self._dict))
+            self.old_date = date
+        else:
+            logger.info('date in dataseries.add: {}'.format(date))
 
     @property
     def dict(self):
@@ -70,6 +79,7 @@ class DataSeriesBase(object):
         self._dict[self._instrument].pop(-2)
 
     def copy_last(self, new_date):  # 更新日期
+        logger.info('new_date in dataseries copy_last: {}'.format(new_date))
         self._dict[self._instrument].append(self._dict[self._instrument][-1])
         self._dict[self._instrument][-1]['date'] = new_date
 

@@ -11,28 +11,34 @@ class MyStrategy(StrategyBase):
         super().__init__(market_event)
 
     def prenext(self):
-        logger.info('self.bar.open[1]: {}'.format(self.bar.open[1]))
-        logger.info('self.bar.high[1:]: {}'.format(self.bar.high[1:]))
-        logger.info('self.bar.low[:2]: {}'.format(self.bar.low[:2]))
-        logger.info('self.bar.close[-2:]: {}'.format(self.bar.close[-2:]))
-        logger.info('self.position[-1]: {}'.format(self.position[-1]))
-        logger.info('self.margin[-1]: {}'.format(self.margin[-1]))
-        logger.info('self.avg_price[-1]: {}'.format(self.avg_price[-1]))
-        logger.info('self.unrealized_gain_and_loss[-1]: {}'.format(
-            self.unrealized_gain_and_loss[-1]))
-        logger.info('self.realized_gain_and_loss[-1]: {}'.format(
-            self.realized_gain_and_loss[-1]))
-        logger.info('self.commission: {}'.format(self.commission))
+        # logger.info('self.bar.open[1]: {}'.format(self.bar.open[1]))
+        # logger.info('self.bar.high[1:]: {}'.format(self.bar.high[1:]))
+        # logger.info('self.bar.low[:2]: {}'.format(self.bar.low[:2]))
+        # logger.info('self.bar.close[:]: {}'.format(self.bar.close[-2:]))
+        # logger.info('self.bar.open[:]: {}'.format(self.bar.open[:]))
+        # logger.info('self.bar.high[:]: {}'.format(self.bar.high[:]))
+        # logger.info('self.bar.low[:]: {}'.format(self.bar.low[:]))
+        # logger.info('self.bar.close[:]: {}'.format(self.bar.close[:]))
+        # logger.info('self.position[-1]: {}'.format(self.position[-1]))
+        # logger.info('self.margin[-1]: {}'.format(self.margin[-1]))
+        # logger.info('self.avg_price[-1]: {}'.format(self.avg_price[-1]))
+        # logger.info('self.unrealized_gain_and_loss[-1]: {}'.format(
+        #     self.unrealized_gain_and_loss[-1]))
+        # logger.info('self.realized_gain_and_loss[-1]: {}'.format(
+        #     self.realized_gain_and_loss[-1]))
+        # logger.info('self.commission: {}'.format(self.commission))
         logger.info('self.cash[-1]: {}'.format(self.cash[-1]))
         logger.info('self.balance[-1]: {}'.format(self.balance[-1]))
 
     def next(self):
-        if self.indicator.SMA(
-                period=5, index=-1) > self.indicator.SMA(
-                    period=10, index=-1):
-            self.buy(2)
+        MA5 = self.indicator.SMA(period=5, index=-1)
+        MA10 = self.indicator.SMA(period=10, index=-1)
+        logger.info('MA5: {}'.format(MA5))
+        logger.info('MA10: {}'.format(MA10))
+        if MA5 > MA10:
+            self.buy_even_and_open(2)
         else:
-            self.sell(2)
+            self.sell_even_and_open(2)
 
 
 trade = Quant()
@@ -40,7 +46,7 @@ data = CSVDataReader(
     # datapath='../data/IF_cleaned_data.csv',
     datapath='/home/demlution/桌面/quant/data/IF_cleaned_data.csv',
     instrument='IF',
-    startdate='2015-04-03',
+    startdate='2015-04-06',
     enddate='2015-04-10')
 data_list = [data]
 portfolio = Portfolio
@@ -53,4 +59,3 @@ trade.set_notify()
 trade.run()
 logger.info(trade.get_trade_log('IF'))
 trade.plot(instrument='IF')
-

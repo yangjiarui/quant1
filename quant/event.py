@@ -1,5 +1,6 @@
 # coding:utf-8
 import queue
+from quant.logging_backtest import logger
 
 events = queue.Queue()
 
@@ -152,6 +153,7 @@ class MarketEvent(object):
         self.instrument = feed.instrument
         self.cur_bar = feed.cur_bar
         self.bar = feed.bar
+        # logger.info('self.bar.open[:] in event: {}'.format(self.bar.open[:]))
         self.per_comm = feed.per_comm
         self.per_margin = feed.per_margin
         self.mult = feed.mult
@@ -178,7 +180,7 @@ class OrderEvent(EventBase):
 
 class FillEvent(EventBase):
     """
-    执行交易事件
+    记录交易事件
     """
     def __init__(self, order):
         super().__init__(order)

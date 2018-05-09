@@ -37,8 +37,15 @@ class Quant(object):
                 logger.info('self.__check_backtest_finished(): {}'.format(
                     self.__check_backtest_finished()))
                 if not self.__check_backtest_finished():
-                    self.__update_time_index()
-                    self.__check_pending_order()
+                    # cur_bar中数据不足两条，不开始计算
+                    if len(self.feed_list[-1].cur_bar._cur_bar_list) < 2:
+                        # logger.info('events.qsize(): {}'.format(events.qsize()))
+                        continue
+                    else:
+                        logger.info('self.feed_list[-1].cur_bar.next_date: {}'.format(self.feed_list[-1].cur_bar.next_date))
+                        self.__update_time_index()
+                        logger.info('self.feed_list[-1].cur_bar.cur_date: {}'.format(self.feed_list[-1].cur_bar.cur_date))
+                        self.__check_pending_order()
 
             else:
                 if event.type == 'Market':
@@ -62,6 +69,7 @@ class Quant(object):
 
     def __initialization(self):
         """对所有 feed 和 fill 内各项数据进行初始化"""
+        logger.info('feed_list in main initialization: {}'.format(self.feed_list))
         for feed in self.feed_list:
             feed.load_once()
             instrument = feed.instrument
@@ -81,6 +89,7 @@ class Quant(object):
         self.bar = Bar('')
         self.bar._initialize()
         for feed in self.feed_list:
+            logger.info('feed.bar.total_dict in main: {}'.format(feed.bar.total_dict))
             self.bar._combine_all_feed(feed.bar.total_dict)
 
     def __load_all_feed(self):
@@ -93,6 +102,8 @@ class Quant(object):
     def __update_time_index(self):
         """每次更新行情后，根据新行情更新仓位、现金、保证金等账户基本信息"""
         self.fill.update_time_index(self.feed_list)
+        logger.info('len(self.feed_list) in main: {}'.format(len(self.feed_list)))
+        logger.info('self.feed_list in main: {}'.format(self.feed_list))
         date_dict = {}
         if len(self.feed_list) > 1:
             for index, feed in enumerate(self.feed_list):
@@ -248,4 +259,4 @@ class Quant(object):
             bar=self.bar,
             fill=self.fill
         )
-        data.plot(instrument=instrument, engine=engine, notebook=notebook)
+        # data.plot(instrument=instrument, engine=engine, notebook=notebook)

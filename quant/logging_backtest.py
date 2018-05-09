@@ -19,4 +19,4 @@ console_handler.formatter = formatter
 logger.addHandler(file_handler)
 logger.addHandler(console_handler)
 # 指定输出级别
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.WARN)

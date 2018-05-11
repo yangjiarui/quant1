@@ -19,9 +19,9 @@ class OrderData(object):
         self.execute_mode = execute_mode
         self.order_type = order_type
         self.execute_mode_price = None
-        self.__set_order_info()
+        self.__set_order_debug()
 
-    def __set_order_info(self):
+    def __set_order_debug(self):
         """初始化各项数据"""
         self.__set_date()
         self.__set_direction()
@@ -46,14 +46,14 @@ class OrderData(object):
         根据execute_mode即开仓平仓，计算价格
         更改结算价为当条bar的收盘价
         """
-        logger.info('self.execute_mode: {}'.format(self.execute_mode))
+        logger.debug('self.execute_mode: {}'.format(self.execute_mode))
         if self.execute_mode is 'open':
             # self.execute_mode_price = self._cur_bar.next_open
             self.execute_mode_price = self._cur_bar.cur_close
         elif self.execute_mode is 'close':
             self.execute_mode_price = self._cur_bar.cur_close
 
-        logger.info('self.price: {}'.format(self.price))
+        logger.debug('self.price: {}'.format(self.price))
         if self.price in ['open', 'close', None]:
             self.price = self.execute_mode_price
         elif type(self.price) is type:
@@ -63,7 +63,7 @@ class OrderData(object):
                 self.price = self.execute_mode_price * self.price.pct  # ???
             else:
                 raise SyntaxError('价格必须为点数或百分数!')
-        logger.info('self.price: {}'.format(self.price))
+        logger.debug('self.price: {}'.format(self.price))
 
     def __set_take_profit(self, cur_price):
         """计算止盈价格"""
@@ -288,14 +288,14 @@ class Order(OrderBase):
         self._date = self._order_data.date
         self._units = self._order_data.units
         self._price = self._order_data.price
-        logger.info('self._price: {}'.format(self._price))
+        logger.debug('self._price: {}'.format(self._price))
         self._take_profit = self._order_data.take_profit
         self._stop_loss = self._order_data.stop_loss
         self._trailing_stop = self._order_data.trailing_stop
         self._trailing_stop_calc = self._order_data.trailing_stop_calc
 
         execute_mode_price = self._order_data.execute_mode_price
-        logger.info('execute_mode_price: {}'.format(execute_mode_price))
+        logger.debug('execute_mode_price: {}'.format(execute_mode_price))
         if self._execute_type == 'CLOSE_ALL':
             return
         elif self._price > execute_mode_price:

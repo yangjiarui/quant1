@@ -29,7 +29,7 @@ class Plotter(PlotBase):
 
     def plot(self, instrument=None, engine='plotly', notebook=False):
         if engine == 'plotly':
-            logger.info('type(instrument): {}'.format(type(instrument)))
+            logger.debug('type(instrument): {}'.format(type(instrument)))
             if isinstance(instrument, str):
                 df = pd.DataFrame(self.bar[instrument])
                 df.set_index('time', inplace=True)

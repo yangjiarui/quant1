@@ -16,7 +16,7 @@ class Current_bar(BarBase):
     def add_new_bar(self, new_bar):
         '如果列表是满的，添加新数据时需弹出第一条数据'
         bar_list_length = len(self._cur_bar_list)
-        logger.info('self._cur_bar_list in barbase: {}'.format(self._cur_bar_list))
+        logger.debug('self._cur_bar_list in barbase: {}'.format(self._cur_bar_list))
         if bar_list_length == 2:
             self._cur_bar_list.pop(0)
         elif bar_list_length == 1:

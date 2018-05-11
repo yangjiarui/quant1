@@ -99,7 +99,7 @@ class Broker(BrokerBase):
             self.change_status('SUBMITTED')
             self.notify()
         else:
-            logger.info('现金不够，本次交易取消')
+            logger.debug('现金不够，本次交易取消')
 
     def prenext(self):
         pass
@@ -120,7 +120,7 @@ class Broker(BrokerBase):
 
     def notify(self):
         if self._notify:
-            logger.info('{}, {}, {}, {} @ {}, units: {}, execute: {}'.format(
+            logger.debug('{}, {}, {}, {} @ {}, units: {}, execute: {}'.format(
                 self.order_event.date, self.order_event.instrument,
                 self.order_event.order_type, self.order_event.status,
                 self.order_event.price, self.order_event.units,

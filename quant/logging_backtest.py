@@ -7,7 +7,7 @@ import logging.handlers
 logger = logging.getLogger('backtest')
 # 指定输出格式
 formatter = logging.Formatter(
-    '%(asctime)s %(levelname)s in line %(lineno)d: %(message)s')
+    '%(asctime)s %(levelname)s in line %(lineno)d  |||| %(message)s')
 # 日志保存到文件
 filepath = 'backtest_error.log'
 file_handler = logging.handlers.TimedRotatingFileHandler(

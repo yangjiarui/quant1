@@ -1,5 +1,6 @@
 # coding:utf-8
 import pandas as pd
+from quant.logging_backtest import logger
 
 
 class BarBase(object):
@@ -14,8 +15,13 @@ class Current_bar(BarBase):
 
     def add_new_bar(self, new_bar):
         '如果列表是满的，添加新数据时需弹出第一条数据'
-        if len(self._cur_bar_list) == 2:
+        bar_list_length = len(self._cur_bar_list)
+        logger.debug('self._cur_bar_list in barbase: {}'.format(self._cur_bar_list))
+        if bar_list_length == 2:
             self._cur_bar_list.pop(0)
+        elif bar_list_length == 1:
+            if new_bar['time'] == self._cur_bar_list[0]['time']:
+                self._cur_bar_list = []
         self._cur_bar_list.append(new_bar)
 
     @property

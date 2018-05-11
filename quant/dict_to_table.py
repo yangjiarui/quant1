@@ -19,7 +19,7 @@ def dict_to_table(result_dict):
 
     table_str = '{}\n{}{}'.format(header_footer, ''.join(data_list),
                                   header_footer)
-    logger.info('table_str: {}'.format(table_str))
+    logger.debug('table_str: {}'.format(table_str))
 
 
 if __name__ == '__main__':

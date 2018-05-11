@@ -29,7 +29,7 @@ class Plotter(PlotBase):
 
     def plot(self, instrument=None, engine='plotly', notebook=False):
         if engine == 'plotly':
-            logger.info('type(instrument): {}'.format(type(instrument)))
+            logger.debug('type(instrument): {}'.format(type(instrument)))
             if isinstance(instrument, str):
                 df = pd.DataFrame(self.bar[instrument])
                 df.set_index('time', inplace=True)
@@ -98,10 +98,10 @@ class Plotter(PlotBase):
             xaxis4=dict(domain=[0, 1], anchor='y4', scaleanchor='x2', autorange=True),
             xaxis6=dict(domain=[0, 1], anchor='y6', scaleanchor='x2', autorange=True),
             yaxis2=dict(domain=[0, 0.15], scaleanchor='x2', autorange=True,),
-            yaxis3=dict(domain=[0.15, 0.65], scaleanchor='x2', autorange=True,),
-            yaxis4=dict(domain=[0.65, 0.85], scaleanchor='x2', autorange=True,),
+            yaxis3=dict(domain=[0.15, 0.35], scaleanchor='x2', autorange=True,),
+            yaxis4=dict(domain=[0.35, 0.85], scaleanchor='x2', autorange=True,),
             yaxis5=dict(
-                domain=[0.15, 0.65],
+                domain=[0.15, 0.35],
                 side='right',
                 # range=[0, 10000000],
                 autorange=True,

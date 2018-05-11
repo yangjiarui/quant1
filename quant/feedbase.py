@@ -23,6 +23,7 @@ class DataHandler(ABC):
 
         self._per_comm = None
         self._per_margin = None
+        self._units = None
         self._mult = None
         self._iteration_buffer = None  # 给preload用的，一次性的
         self._buffer_days = None
@@ -36,6 +37,9 @@ class DataHandler(ABC):
 
     def set_per_margin(self, value):
         self._per_margin = value
+
+    def set_units(self, value):
+        self._units = value
 
     def set_mult(self, value):
         self._mult = value
@@ -67,6 +71,14 @@ class DataHandler(ABC):
     @per_margin.setter
     def per_margin(self, value):
         self._per_margin = value
+
+    @property
+    def units(self):
+        return self._units
+
+    @units.setter
+    def units(self, value):
+        self._units = value
 
     @property
     def mult(self):
@@ -139,7 +151,7 @@ class DataHandler(ABC):
             return
         self.__update_bar()
         events.put(MarketEvent(self))
-        logger.info('-----------------------------------------')
+        logger.debug('-----------------------------------------')
 
 
 class CSVDataReader(DataHandler):
@@ -155,18 +167,18 @@ class CSVDataReader(DataHandler):
     def __set_date(self):
         """将输入的日期转换成datetime对象"""
         if self.startdate:
-            # logger.info('self.startdate: {}'.format(self.startdate))  # 转换前
+            # logger.debug('self.startdate: {}'.format(self.startdate))  # 转换前
             self.startdate = datetime.strptime(self.startdate, "%Y-%m-%d")
-            logger.info('self.startdate: {}'.format(self.startdate))  # 转换后
+            logger.debug('self.startdate: {}'.format(self.startdate))  # 转换后
         if self.enddate:
-            # logger.info('self.enddate: {}'.format(self.enddate))  # 转换前
+            # logger.debug('self.enddate: {}'.format(self.enddate))  # 转换前
             self.enddate = datetime.strptime(self.enddate, "%Y-%m-%d")
-            logger.info("self.enddate: {}".format(self.enddate))  # 转换后
+            logger.debug("self.enddate: {}".format(self.enddate))  # 转换后
 
     def __set_bar_date(self, bar):
         """将bar中的time识别为日期格式"""
         date = bar['time']
-        # logger.info('date: {}'.format(date))
+        # logger.debug('date: {}'.format(date))
         return datetime.strptime(str(date), self.date_format).strftime(
             self.date_format)
 
@@ -181,7 +193,7 @@ class CSVDataReader(DataHandler):
                     new_bar[i] = float(new_bar[i])
                 except ValueError:
                     pass
-            # logger.info('new_bar: {}'.format(new_bar))
+            # logger.debug('new_bar: {}'.format(new_bar))
             return new_bar
 
         try:
@@ -190,22 +202,22 @@ class CSVDataReader(DataHandler):
             new_bar_date = datetime.strptime(new_bar['time'],
                                              self.date_format)
             if self.startdate:
-                # logger.info("new_bar['time']: {}".format(new_bar['time']))
+                # logger.debug("new_bar['time']: {}".format(new_bar['time']))
                 while new_bar_date <= self.startdate:
-                    # logger.info('new_bar_date: {}'.format(new_bar_date))
-                    # logger.info('startdate: {}'.format(self.startdate))
-                    # logger.info('type of startdate: {}'.format(
+                    # logger.debug('new_bar_date: {}'.format(new_bar_date))
+                    # logger.debug('startdate: {}'.format(self.startdate))
+                    # logger.debug('type of startdate: {}'.format(
                     #     type(self.startdate)))
-                    # logger.info(11111)
+                    # logger.debug(11111)
                     # time.sleep(1)
                     new_bar = __update()
                     new_bar_date = datetime.strptime(new_bar['time'],
                                                      self.date_format)
-                    # logger.info('self.enddate: {}'.format(self.enddate))
+                    # logger.debug('self.enddate: {}'.format(self.enddate))
             if self.enddate:
                 while new_bar_date > self.enddate:
                     raise StopIteration
-            logger.info('new_bar in feedbase: {}'.format(new_bar))
+            logger.debug('new_bar in feedbase: {}'.format(new_bar))
             self.cur_bar.add_new_bar(new_bar)
 
         except StopIteration:
@@ -226,7 +238,7 @@ class CSVDataReader(DataHandler):
 
         def _update():
             bar = next(self._iteration_buffer)
-            logger.info('bar: {}'.format(bar))
+            logger.debug('bar: {}'.format(bar))
             bar['time'] = self.__set_bar_date(bar)
 
             for i in bar:
@@ -238,7 +250,7 @@ class CSVDataReader(DataHandler):
 
         try:
             bar = _update()
-            logger.info('barr: {}'.format(bar))
+            logger.debug('barr: {}'.format(bar))
             new_bar_date = datetime.strptime(bar['time'],
                                              self.date_format)
             if self.startdate:
@@ -257,7 +269,7 @@ class CSVDataReader(DataHandler):
             pass
 
         except StopIteration:
-            logger.info("不可能的")
+            logger.debug("不可能的")
 
         self.preload_bar_list.reverse()
 

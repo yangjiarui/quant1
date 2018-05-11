@@ -16,7 +16,7 @@ class DataSeriesBase(object):
         # print('self._instrument: {}'.format(self._instrument))
         # print(key)
         # print(self._name)
-        # logger.info(
+        # logger.debug(
         #     'self._dict[self._instrument][key][self._name]: {}'.format(
         #         self._dict[self._instrument][key][self._name]))
         return self._dict[self._instrument][key][self._name]
@@ -28,14 +28,18 @@ class DataSeriesBase(object):
         self._instrument = instrument
 
     def add(self, date, value):
+        logger.info('self.old_date, date in add dataseries: {} {}'.format(self.old_date, date))
         if self.old_date != date:
             if self._dict[self._instrument][0]['date'] == 'start':
                 self._dict[self._instrument] = []
             self._dict[self._instrument].append({'date': date, self._name: value})
-            # logger.info('self._dict in dataseries: {}'.format(self._dict))
+            # logger.debug('self._dict in dataseries: {}'.format(self._dict))
             self.old_date = date
         else:
+            logger.info('self.old_date, date in add dataseries: {} {}'.format(self.old_date, date))
             logger.info('date in dataseries.add: {}'.format(date))
+            logger.info('value in add: {}'.format(value))
+            self._dict[self._instrument][-1][self._name] = value
 
     @property
     def dict(self):
@@ -79,7 +83,7 @@ class DataSeriesBase(object):
         self._dict[self._instrument].pop(-2)
 
     def copy_last(self, new_date):  # 更新日期
-        logger.info('new_date in dataseries copy_last: {}'.format(new_date))
+        logger.debug('new_date in dataseries copy_last: {}'.format(new_date))
         self._dict[self._instrument].append(self._dict[self._instrument][-1])
         self._dict[self._instrument][-1]['date'] = new_date
 
@@ -136,32 +140,38 @@ class UnrealizedGainAndLossSeries(DataSeriesBase):
         self._dict[instrument] = [{
             'date': 'start',
             self._name: initial,
-            'unrealized_gain_and_loss_high': initial,
-            'unrealized_gain_and_loss_low': initial,
+            # 'unrealized_gain_and_loss_high': initial,
+            # 'unrealized_gain_and_loss_low': initial,
         }]
 
-    def add(self, date, unrealized_gain_and_loss,
-            unrealized_gain_and_loss_high, unrealized_gain_and_loss_low):
+    def add(self, date, unrealized_gain_and_loss):
         self._dict[self._instrument].append({
             'date': date,
             self._name: unrealized_gain_and_loss,
-            'unrealized_gain_and_loss_high': unrealized_gain_and_loss_high,
-            'unrealized_gain_and_loss_low': unrealized_gain_and_loss_low,
         })
 
-    @property
-    def high(self):
-        return [i['unrealized_gain_and_loss_high'] for i in self._dict[self._instrument]]
+    # def add(self, date, unrealized_gain_and_loss,
+    #         unrealized_gain_and_loss_high, unrealized_gain_and_loss_low):
+    #     self._dict[self._instrument].append({
+    #         'date': date,
+    #         self._name: unrealized_gain_and_loss,
+    #         'unrealized_gain_and_loss_high': unrealized_gain_and_loss_high,
+    #         'unrealized_gain_and_loss_low': unrealized_gain_and_loss_low,
+    #     })
 
-    @property
-    def low(self):
-        return [i['unrealized_gain_and_loss_low'] for i in self._dict[self._instrument]]
+    # @property
+    # def high(self):
+    #     return [i['unrealized_gain_and_loss_high'] for i in self._dict[self._instrument]]
 
-    def total_high(self, key=-1):
-        return self.total(key, 'unrealized_gain_and_loss_high')
+    # @property
+    # def low(self):
+    #     return [i['unrealized_gain_and_loss_low'] for i in self._dict[self._instrument]]
 
-    def total_low(self, key=-1):
-        return self.total(key, 'unrealized_gain_and_loss_low')
+    # def total_high(self, key=-1):
+    #     return self.total(key, 'unrealized_gain_and_loss_high')
+
+    # def total_low(self, key=-1):
+    #     return self.total(key, 'unrealized_gain_and_loss_low')
 
 
 class BalanceSeries(DataSeriesBase):
@@ -173,22 +183,34 @@ class BalanceSeries(DataSeriesBase):
         self._dict[self._instrument] = [{
             'date': 'start',
             self._name: initial,
-            'balance_high': initial,
-            'balance_low': initial,
         }]
 
-    def add(self, date, balance, balance_high, balance_low):
+    def add(self, date, balance):
         self._dict[self._instrument].append({
             'date': date,
             self._name: balance,
-            'balance_high': balance_high,
-            'balance_low': balance_low,
         })
 
-    @property
-    def high(self):
-        return [i['balance_high'] for i in self._dict[self._instrument]]
+    # def initialize(self, instrument, initial):
+    #     self._dict[self._instrument] = [{
+    #         'date': 'start',
+    #         self._name: initial,
+    #         'balance_high': initial,
+    #         'balance_low': initial,
+    #     }]
 
-    @property
-    def low(self):
-        return [i['balance_low'] for i in self._dict[self._instrument]]
+    # def add(self, date, balance, balance_high, balance_low):
+    #     self._dict[self._instrument].append({
+    #         'date': date,
+    #         self._name: balance,
+    #         'balance_high': balance_high,
+    #         'balance_low': balance_low,
+    #     })
+
+    # @property
+    # def high(self):
+    #     return [i['balance_high'] for i in self._dict[self._instrument]]
+
+    # @property
+    # def low(self):
+    #     return [i['balance_low'] for i in self._dict[self._instrument]]

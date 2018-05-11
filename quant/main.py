@@ -31,20 +31,20 @@ class Quant(object):
         while True:
             try:
                 event = events.get(False)
-                logger.info('events.qsize(): {}'.format(events.qsize()))
+                logger.debug('events.qsize(): {}'.format(events.qsize()))
             except queue.Empty:
                 self.__load_all_feed()
-                logger.info('self.__check_backtest_finished(): {}'.format(
+                logger.debug('self.__check_backtest_finished(): {}'.format(
                     self.__check_backtest_finished()))
                 if not self.__check_backtest_finished():
                     # cur_bar中数据不足两条，不开始计算
                     if len(self.feed_list[-1].cur_bar._cur_bar_list) < 2:
-                        # logger.info('events.qsize(): {}'.format(events.qsize()))
+                        # logger.debug('events.qsize(): {}'.format(events.qsize()))
                         continue
                     else:
-                        logger.info('self.feed_list[-1].cur_bar.next_date: {}'.format(self.feed_list[-1].cur_bar.next_date))
+                        logger.debug('self.feed_list[-1].cur_bar.next_date: {}'.format(self.feed_list[-1].cur_bar.next_date))
                         self.__update_time_index()
-                        logger.info('self.feed_list[-1].cur_bar.cur_date: {}'.format(self.feed_list[-1].cur_bar.cur_date))
+                        logger.debug('self.feed_list[-1].cur_bar.cur_date: {}'.format(self.feed_list[-1].cur_bar.cur_date))
                         self.__check_pending_order()
 
             else:
@@ -69,7 +69,7 @@ class Quant(object):
 
     def __initialization(self):
         """对所有 feed 和 fill 内各项数据进行初始化"""
-        logger.info('feed_list in main initialization: {}'.format(self.feed_list))
+        logger.debug('feed_list in main initialization: {}'.format(self.feed_list))
         for feed in self.feed_list:
             feed.load_once()
             instrument = feed.instrument
@@ -89,7 +89,7 @@ class Quant(object):
         self.bar = Bar('')
         self.bar._initialize()
         for feed in self.feed_list:
-            logger.info('feed.bar.total_dict in main: {}'.format(feed.bar.total_dict))
+            logger.debug('feed.bar.total_dict in main: {}'.format(feed.bar.total_dict))
             self.bar._combine_all_feed(feed.bar.total_dict)
 
     def __load_all_feed(self):
@@ -102,8 +102,8 @@ class Quant(object):
     def __update_time_index(self):
         """每次更新行情后，根据新行情更新仓位、现金、保证金等账户基本信息"""
         self.fill.update_time_index(self.feed_list)
-        logger.info('len(self.feed_list) in main: {}'.format(len(self.feed_list)))
-        logger.info('self.feed_list in main: {}'.format(self.feed_list))
+        logger.debug('len(self.feed_list) in main: {}'.format(len(self.feed_list)))
+        logger.debug('self.feed_list in main: {}'.format(self.feed_list))
         date_dict = {}
         if len(self.feed_list) > 1:
             for index, feed in enumerate(self.feed_list):
@@ -188,7 +188,7 @@ class Quant(object):
         self.set_trailing_stop_price('open')
         self.set_buffer(10)
 
-    def set_commission(self, commission, margin, mult, instrument=None):
+    def set_commission(self, commission, margin, mult, units, instrument=None):
         """
         设置手续费、保证金、合约单位及合约品种等参数
         commission：手续费，0.0003表示每手收取0.03%的手续费
@@ -200,6 +200,7 @@ class Quant(object):
                 feed.set_per_comm(commission)
                 feed.set_per_margin(margin)
                 feed.set_mult(mult)
+                feed.set_units(units)
 
     def set_cash(self, cash=500000):
         """设置初始资金"""
@@ -225,7 +226,7 @@ class Quant(object):
         results['Max_Drawdown'] = str(max_drawdown * 100) + '%'
         results['Duration'] = duration
         results['Sharpe_Ratio'] = round(create_sharpe_ratio(pct_returns), 3)
-        logger.info('dict_to_table(results): {}'.format(
+        logger.debug('dict_to_table(results): {}'.format(
             dict_to_table(results)))
 
     def get_trade_log(self, instrument):
@@ -249,7 +250,7 @@ class Quant(object):
         trade_log = trade_log[trade_log['units'] != 0]
         trade_log.reset_index(drop=True, inplace=True)
         analysis = stats(ohlc_data, trade_log, dbal, start, end, capital)
-        logger.info('dict_to_table(analysis): {}'.format(
+        logger.debug('dict_to_table(analysis): {}'.format(
             dict_to_table(analysis)))
 
     def plot(self, instrument, engine='plotly', notebook=False):

@@ -127,28 +127,28 @@ class RealizedGainAndLossSeries(DataSeriesBase):
     """平仓盈亏，即已获得的盈亏"""
     _name = 'realized_gain_and_loss'
 
-    def update_cur(self, realized_gain_and_loss):
-        self._dict[self._instrument][-1][
-            'realized_gain_and_loss'] = realized_gain_and_loss
+    # def update_cur(self, realized_gain_and_loss):
+    #     self._dict[self._instrument][-1][
+    #         'realized_gain_and_loss'] = realized_gain_and_loss
 
 
 class UnrealizedGainAndLossSeries(DataSeriesBase):
     """浮动盈亏，即账面盈亏，还未获得，需平仓才能获得"""
     _name = 'unrealized_gain_and_loss'
 
-    def initialize(self, instrument, initial):
-        self._dict[instrument] = [{
-            'date': 'start',
-            self._name: initial,
-            # 'unrealized_gain_and_loss_high': initial,
-            # 'unrealized_gain_and_loss_low': initial,
-        }]
-
-    def add(self, date, unrealized_gain_and_loss):
-        self._dict[self._instrument].append({
-            'date': date,
-            self._name: unrealized_gain_and_loss,
-        })
+    # def initialize(self, instrument, initial):
+    #     self._dict[instrument] = [{
+    #         'date': 'start',
+    #         self._name: initial,
+    #         # 'unrealized_gain_and_loss_high': initial,
+    #         # 'unrealized_gain_and_loss_low': initial,
+    #     }]
+    #
+    # def add(self, date, unrealized_gain_and_loss):
+    #     self._dict[self._instrument].append({
+    #         'date': date,
+    #         self._name: unrealized_gain_and_loss,
+    #     })
 
     # def add(self, date, unrealized_gain_and_loss,
     #         unrealized_gain_and_loss_high, unrealized_gain_and_loss_low):
@@ -179,17 +179,17 @@ class BalanceSeries(DataSeriesBase):
     _name = 'balance'
     _instrument = 'all'
 
-    def initialize(self, instrument, initial):
-        self._dict[self._instrument] = [{
-            'date': 'start',
-            self._name: initial,
-        }]
-
-    def add(self, date, balance):
-        self._dict[self._instrument].append({
-            'date': date,
-            self._name: balance,
-        })
+    # def initialize(self, instrument, initial):
+    #     self._dict[self._instrument] = [{
+    #         'date': 'start',
+    #         self._name: initial,
+    #     }]
+    #
+    # def add(self, date, balance):
+    #     self._dict[self._instrument].append({
+    #         'date': date,
+    #         self._name: balance,
+    #     })
 
     # def initialize(self, instrument, initial):
     #     self._dict[self._instrument] = [{

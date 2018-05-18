@@ -131,8 +131,7 @@ class StrategyBase(ABC):
                           price=None,
                           take_profit=None,
                           stop_loss=None,
-                          trailing_stop=None,
-                          first_open=False):
+                          trailing_stop=None):
         # logger.debug('self.first_open in strategy: {}'.format(self.first_open))
         # logger.debug('self.position[-1] in strategy: {}'.format(self.position[-1]))
         # if first_open:  # 第一次开仓，只能买入一次
@@ -151,8 +150,7 @@ class StrategyBase(ABC):
                            price=None,
                            take_profit=None,
                            stop_loss=None,
-                           trailing_stop=None,
-                           first_open=False):
+                           trailing_stop=None):
         # logger.debug('self.first_open in strategy: {}'.format(self.first_open))
         # logger.debug('self.position[-1] in sell_even_and_open: {}'.format(self.position[-1]))
         # logger.debug('self.position[-2] in sell_even_and_open: {}'.format(self.position[-2]))
@@ -247,7 +245,8 @@ class StrategyBase(ABC):
 class Strategy(StrategyBase):
     def __init__(self, market_event):
         super().__init__(market_event)
-        self.first_open = True
+        position = self.position[-1]
+        logger.info('position in strategy: {}'.format(position))
 
     def buy_even_and_open(self,
                           units,
@@ -255,17 +254,19 @@ class Strategy(StrategyBase):
                           price=None,
                           take_profit=None,
                           stop_loss=None,
-                          trailing_stop=None,
-                          first_open=False):
-        first_open = self.first_open
+                          trailing_stop=None):
+        # first_open = self.first_open
         logger.debug('self.position[-1] in strategy: {}'.format(self.position[-1]))
-        if first_open:  # 第一次开仓，只能买入一次
-            self.buy_base(units, instrument, price, take_profit, stop_loss, trailing_stop)
-            self.first_open = False
-            return
-        logger.debug('self.position[-1] in buy_even_and_open: {}'.format(self.position))
+        # if first_open:  # 第一次开仓，只能买入一次
+        #     self.buy_base(units, instrument, price, take_profit, stop_loss, trailing_stop)
+        #     self.first_open = False
+        #     return
+        # logger.debug('self.position[-1] in buy_even_and_open: {}'.format(self.position))
         if self.position[-1] < 0:  # 只有当已建立空仓的情况下，才能买入平仓并继续买入开多仓
+            # units = units * 2
             self.buy_base(units, instrument, price, take_profit, stop_loss, trailing_stop)
+            self.buy_base(units, instrument, price, take_profit, stop_loss, trailing_stop)
+        elif self.position[-1] == 0:
             self.buy_base(units, instrument, price, take_profit, stop_loss, trailing_stop)
 
     def sell_even_and_open(self,
@@ -274,18 +275,20 @@ class Strategy(StrategyBase):
                            price=None,
                            take_profit=None,
                            stop_loss=None,
-                           trailing_stop=None,
-                           first_open=False):
-        first_open = self.first_open
+                           trailing_stop=None):
+        # first_open = self.first_open
         logger.debug('self.position[-1] in sell_even_and_open: {}'.format(self.position[-1]))
         logger.debug('self.position[-2] in sell_even_and_open: {}'.format(self.position[-2]))
-        if first_open:  # 第一次开仓，只能卖出一次
-            self.sell_base(units, instrument, price, take_profit, stop_loss, trailing_stop)
-            self.first_open = False
-            return
+        # if first_open:  # 第一次开仓，只能卖出一次
+        #     self.sell_base(units, instrument, price, take_profit, stop_loss, trailing_stop)
+        #     self.first_open = False
+        #     return
         logger.debug('self.position[-1] in sell_even_and_open: {}'.format(self.position[-1]))
         if self.position[-1] > 0:  # 只有当已建立多仓的情况下，才能卖出平仓并继续卖出开空仓
+            # units = units * 2
             self.sell_base(units, instrument, price, take_profit, stop_loss, trailing_stop)
+            self.sell_base(units, instrument, price, take_profit, stop_loss, trailing_stop)
+        elif self.position[-1] == 0:
             self.sell_base(units, instrument, price, take_profit, stop_loss, trailing_stop)
 
     def buy(self,

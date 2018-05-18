@@ -36,11 +36,34 @@ class Indicator(IndicatorBase):
     def __init__(self, market_event):
         super().__init__(market_event)
         self.SMA = self.simple_moving_average
+        self.num1 = 0
+        self.num2 = 0
 
     def simple_moving_average(self, period, index=-1):
-        data = self.get_preload(period, index, 'close')
-        sma = talib.SMA(data, period)  # 返回array，period个数前计算会得到nan，需处理
-        if np.isnan(sma[index]):
+        close = self.get_preload(period, index, 'close')
+        sma_close = talib.SMA(close, period)  # 返回array，period个数前计算会得到nan，需处理
+        if np.isnan(sma_close[index]):
             raise Warning
         else:
-            return sma[index]
+            return sma_close[index]
+
+    def open(self, period=1):
+        open = self.get_preload(period, index=-1, ohlc='open')
+        return open
+
+    def high(self, period=1):
+        high = self.get_preload(period, index=-1, ohlc='high')
+        return high
+
+    def low(self, period=1):
+        low = self.get_preload(period, index=-1, ohlc='low')
+        return low
+
+    def close(self, period=1):
+        close = self.get_preload(period, index=-1, ohlc='close')
+        return close
+
+    def crossup(self, num1, num2):
+        num_a = num1
+        num_b = num2
+

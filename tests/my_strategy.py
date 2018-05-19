@@ -10,7 +10,7 @@ from quant.logging_backtest import logger
 class MyStrategy(Strategy):
     def __init__(self, market_event):
         super().__init__(market_event)
-        self.first_open = True
+        # self.first_open = True
         # self.indicator = Indicator(market_event)
         # ma5 = self.indicator.SMA(period=5, index=-1)
         # ma10 = self.indicator.SMA(period=10, index=-1)
@@ -38,32 +38,30 @@ class MyStrategy(Strategy):
         logger.debug('self.balance[-1]: {}'.format(self.balance[-1]))
 
     def next(self):
-        units = 1
+        lots = 1
         # ma2 = self.indicator.SMA(period=2, index=-1)
         ma5 = self.indicator.SMA(period=5, index=-1)
         # ma3 = self.indicator.SMA(period=3, index=-1)
         ma10 = self.indicator.SMA(period=10, index=-1)
         logger.info('ma5: {}'.format(ma5))
         logger.info('ma10: {}'.format(ma10))
-        # logger.info('MA20: {}'.format(MA20))
+        high = self.indicator.high()
+        low = self.indicator.low()
+        last_open = self.indicator.open(2)  # 前n个周期的值，代入n
+        average_true_range = self.indicator.average_true_range(20)
+        logger.info('average_true_range: {}'.format(average_true_range))
         if ma5 > ma10:
-            # if self.first_open:  # 如果第一次开仓，则只能买入一次
-            #     self.buy(2)
-            #     self.first_open = False
-            #     return
-            self.buy_even_and_open(units)
+            self.buy_even_and_open(lots)
             # self.buy(2)
-            open = self.indicator.open(units)
+            open = self.indicator.open()
+            last_open = self.indicator.open(2)
             logger.info('open in my_strategy: {}'.format(open))
+            logger.info('last_open in my_strategy: {}'.format(last_open))
             # self.sell(2)
         elif ma5 < ma10:
-            # if self.first_open:  # 如果第一次开仓，则只能卖出一次
-            #     self.sell(2)
-            #     self.first_open = False
-            #     return
-            self.sell_even_and_open(units)
+            self.sell_even_and_open(lots)
             # self.sell(2)
-            close = self.indicator.close(units)
+            close = self.indicator.close()
             logger.info('close in my_strategy: {}'.format(close))
             # self.buy(2)
         # ma5_last
@@ -82,7 +80,7 @@ portfolio = Portfolio
 strategy = MyStrategy
 
 trade.set_backtest(data_list, [strategy], portfolio)
-trade.set_commission(commission=0.0003, margin=0.08, mult=300, units=1, instrument='IF')
+trade.set_commission(commission=0.0003, margin=0.08, units=300, lots=1, instrument='IF')
 trade.set_cash(500000)
 trade.set_notify()
 trade.run()

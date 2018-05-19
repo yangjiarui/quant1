@@ -188,19 +188,20 @@ class Quant(object):
         self.set_trailing_stop_price('open')
         self.set_buffer(10)
 
-    def set_commission(self, commission, margin, mult, units, instrument=None):
+    def set_commission(self, commission, margin, units, lots, instrument=None):
         """
         设置手续费、保证金、合约单位及合约品种等参数
         commission：手续费，0.0003表示每手收取0.03%的手续费
         margin：保证金比例，通常为0.05-0.15
-        mult：合约单位，一般为吨/手
+        units：合约单位，一般为吨/手
+        lots:下单手数
         """
         for feed in self.feed_list:
             if feed.instrument == instrument or instrument is None:
                 feed.set_per_comm(commission)
                 feed.set_per_margin(margin)
-                feed.set_mult(mult)
                 feed.set_units(units)
+                feed.set_lots(lots)
 
     def set_cash(self, cash=500000):
         """设置初始资金"""
@@ -234,7 +235,7 @@ class Quant(object):
         completed_list = self.fill.completed_list
         for feed in self.feed_list:
             if feed.instrument is instrument:
-                return create_trade_log(completed_list, feed.mult)
+                return create_trade_log(completed_list, feed.units)
 
     def get_analysis(self, instrument):
         """输出详细的结果分析"""
@@ -247,7 +248,7 @@ class Quant(object):
         end = dbal.index[-1]
         capital = self.fill.initial_cash
         trade_log = self.get_trade_log(instrument)
-        trade_log = trade_log[trade_log['units'] != 0]
+        trade_log = trade_log[trade_log['lots'] != 0]
         trade_log.reset_index(drop=True, inplace=True)
         analysis = stats(ohlc_data, trade_log, dbal, start, end, capital)
         logger.debug('dict_to_table(analysis): {}'.format(
@@ -260,4 +261,4 @@ class Quant(object):
             bar=self.bar,
             fill=self.fill
         )
-        # data.plot(instrument=instrument, engine=engine, notebook=notebook)
+        data.plot(instrument=instrument, engine=engine, notebook=notebook)

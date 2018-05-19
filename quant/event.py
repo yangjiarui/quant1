@@ -31,12 +31,12 @@ class EventBase(object):
         self._order.set_feed(value)
 
     @property
-    def units(self):
-        return self._order.units
+    def lots(self):
+        return self._order.lots
 
-    @units.setter
-    def units(self, value):
-        self._order.set_units(value)
+    @lots.setter
+    def lots(self, value):
+        self._order.set_lots(value)
 
     @property
     def execute_type(self):
@@ -135,12 +135,12 @@ class EventBase(object):
         self._order.set_per_margin(value)
 
     @property
-    def mult(self):
-        return self._order.mult
+    def units(self):
+        return self._order.units
 
-    @mult.setter
-    def mult(self, value):
-        self._order.set_mult(value)
+    @units.setter
+    def units(self, value):
+        self._order.set_units(value)
 
 
 class MarketEvent(object):
@@ -156,7 +156,7 @@ class MarketEvent(object):
         # logger.debug('self.bar.open[:] in event: {}'.format(self.bar.open[:]))
         self.per_comm = feed.per_comm
         self.per_margin = feed.per_margin
-        self.mult = feed.mult
+        self.units = feed.units
         self.execute_mode = feed.execute_mode
 
 

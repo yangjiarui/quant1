@@ -13,7 +13,7 @@ class StrategyBase(ABC):
         self._signal_list = []
         self.market_event = market_event
 
-        self.mult = market_event.mult
+        self.units = market_event.units
         self.instrument = market_event.instrument
         self.bar = market_event.bar
         self.bar.set_instrument(self.instrument)

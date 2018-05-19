@@ -30,7 +30,7 @@ portfolio = Portfolio
 strategy = MyStrategy
 
 trade.set_backtest(data_list, [strategy], portfolio)
-trade.set_commission(commission=0.0003, margin=0.15, mult=300, units=2, instrument='IF')
+trade.set_commission(commission=0.0003, margin=0.15, units=300, units=2, instrument='IF')
 trade.set_cash(500000)
 trade.set_notify()
 trade.run()

@@ -23,8 +23,8 @@ class DataHandler(ABC):
 
         self._per_comm = None
         self._per_margin = None
+        self._lots = None
         self._units = None
-        self._mult = None
         self._iteration_buffer = None  # 给preload用的，一次性的
         self._buffer_days = None
         self._iteration_data = None  # 给get_new_bar用的
@@ -38,11 +38,11 @@ class DataHandler(ABC):
     def set_per_margin(self, value):
         self._per_margin = value
 
+    def set_lots(self, value):
+        self._lots = value
+
     def set_units(self, value):
         self._units = value
-
-    def set_mult(self, value):
-        self._mult = value
 
     def set_iteration_buffer(self, value):
         self._iteration_buffer = value
@@ -73,20 +73,20 @@ class DataHandler(ABC):
         self._per_margin = value
 
     @property
+    def lots(self):
+        return self._lots
+
+    @lots.setter
+    def lots(self, value):
+        self._lots = value
+
+    @property
     def units(self):
         return self._units
 
     @units.setter
     def units(self, value):
         self._units = value
-
-    @property
-    def mult(self):
-        return self._mult
-
-    @mult.setter
-    def mult(self, value):
-        self._mult = value
 
     @property
     def iteration_buffer(self):

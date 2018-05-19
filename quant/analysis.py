@@ -46,7 +46,7 @@ def create_drawdowns(equity_curve):
     return round(drawdown.max(), 5), round(duration.max(), 3)
 
 
-def create_trade_log(completed_list, mult):
+def create_trade_log(completed_list, units):
     """
     记录每比交易的明细，包括开仓日期、开仓价格、订单类型、手数、
     平仓日期、平仓价格、执行类型、收益、佣金及总收益等
@@ -74,9 +74,9 @@ def create_trade_log(completed_list, mult):
         d['pl_points'] = i[1].price - i[0].price
         d['execute_type'] = i[1].execute_type
         d['re_profit'] = (
-            (f.price - i[0].price) * d['units'] * mult * i[0].direction)
+            (f.price - i[0].price) * d['units'] * units * i[0].direction)
 
-        comm = f.per_comm * mult
+        comm = f.per_comm * units
         d['commission'] = d['units'] * comm * f.price * 2
         trade_log_list.append(d)
 

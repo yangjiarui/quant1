@@ -95,10 +95,10 @@ class BacktestFill(FillBase):
             logger.info('fill_event.execute_type in date：{} in {}'.format(fill_event.execute_type, fill_event.date))
             # margin = fill_event.per_margin * (
             #     cur_position * fill_event.mult * cur_close)
-            logger.info('fill_event.per_margin * cur_position * avg_price * fill_event.mult: {}, {}, {}, {}'.format(
-                fill_event.per_margin, cur_position, avg_price, fill_event.mult))
+            logger.info('fill_event.per_margin * cur_position * avg_price * fill_event.units: {}, {}, {}, {}'.format(
+                fill_event.per_margin, cur_position, avg_price, fill_event.units))
             # 保证金不能为负，用持仓均价计算，不用当日结算价计算，保留两位小数
-            margin = np.round(fill_event.per_margin * units * avg_price * fill_event.mult, 2)
+            margin = np.round(fill_event.per_margin * units * avg_price * fill_event.units, 2)
         logger.info('margin in date: {} {}'.format(margin, fill_event.date))
         self.margin.add(fill_event.date, margin)
 
@@ -114,7 +114,7 @@ class BacktestFill(FillBase):
         elif fill_event.order_type in ['SELL', 'BUY']:
             # per_comm *= fill_event.mult
             # 保留两位小数
-            commission = np.round(units * fill_event.price * per_comm * fill_event.mult, 2)
+            commission = np.round(units * fill_event.price * per_comm * fill_event.units, 2)
             logger.debug('commission {}'.format(commission))
             logger.info('fill_event.units {}'.format(fill_event.units))
             logger.info('fill_event.price in update_commission: {}'.format(fill_event.price))
@@ -186,7 +186,7 @@ class BacktestFill(FillBase):
         #     diff_h = cur_high - cur_avg
         #     diff_l = cur_low - cur_avg
             # 保留两位小数
-            unrealized_g_l = np.round(diff * cur_position * fill_event.mult, 2)
+            unrealized_g_l = np.round(diff * cur_position * fill_event.units, 2)
             if not unrealized_g_l:  # 0.0, -0.0, 0 等情况，取整
                 unrealized_g_l = int(unrealized_g_l)
         #     unrealized_g_l_high = diff_h * cur_position * fill_event.mult
@@ -328,7 +328,7 @@ class BacktestFill(FillBase):
         self.position.add(date, cur_position)
         logger.info('cur_position, cur_avg in date update_time_index: {} {} {}'.format(cur_position,cur_avg, date))
         # unrealized_g_l = (price - cur_avg) * cur_position * feed.mult
-        unrealized_g_l = np.round((price - cur_avg) * abs(cur_position) * feed.mult, 2)
+        unrealized_g_l = np.round((price - cur_avg) * abs(cur_position) * feed.units, 2)
         # unrealized_g_l_high = (high - cur_avg) * cur_position * feed.mult
         # unrealized_g_l_low = (low - cur_avg) * cur_position * feed.mult
         if self.avg_price[-1] == 0:
@@ -416,7 +416,7 @@ class BacktestFill(FillBase):
         date = fill_event.date
 
         def get_re_profit(trade_units):
-            re_profit = np.round((f.price - i.price) * trade_units * f.mult * i.direction, 2)
+            re_profit = np.round((f.price - i.price) * trade_units * f.units * i.direction, 2)
             self.realized_gain_and_loss.add(f.date, re_profit)
             logger.debug('self.realized_gain_and_loss in backtestfill: {}'.format(self.realized_gain_and_loss))
             logger.debug('self.realized_gain_and_loss.date in backtestfill: {}'.format(self.realized_gain_and_loss.date))

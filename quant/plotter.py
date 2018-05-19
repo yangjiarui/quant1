@@ -22,7 +22,7 @@ class Plotter(PlotBase):
         self.cash_df = fill.cash.df
         self.position_df = fill.position.df
         self.realized_G_L_df = fill.realized_gain_and_loss.df
-        self.unrealized_G_L_df = fill.unrealized_gain_and_loss.df
+        self.unrealized_g_l_df = fill.unrealized_gain_and_loss.df
         self.commission_df = fill.commission.df
         self.data = []
         self.update_menus = []
@@ -72,8 +72,8 @@ class Plotter(PlotBase):
             name='realized_gain_and_loss')
 
         p_unrealized_gain_and_loss = go.Scatter(
-            x=self.unrealized_G_L_df.index,
-            y=self.unrealized_G_L_df.unrealized_gain_and_loss,
+            x=self.unrealized_g_l_df.index,
+            y=self.unrealized_g_l_df.unrealized_gain_and_loss,
             xaxis='x4',
             yaxis='y4',
             name='unrealized_gain_and_loss')

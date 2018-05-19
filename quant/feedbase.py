@@ -275,4 +275,4 @@ class CSVDataReader(DataHandler):
 
 
 class CSV(CSVDataReader):
-    date_format = '%Y-%m-%d %H:%M:%S'
+    date_format = '%Y/%m/%d'

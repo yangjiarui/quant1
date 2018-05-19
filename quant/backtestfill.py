@@ -3,10 +3,11 @@ from quant import dataseries
 from copy import copy
 from quant.event import events
 from quant.logging_backtest import logger
+import numpy as np
 
 
 class FillBase(object):
-    """回测执行模块的基类"""
+    """回测记录模块的基类"""
     def __init__(self):
         # 设置默认初始资金，如果用户不更改，则用这个资金进行回测
         self.initial_cash = 100000
@@ -72,7 +73,7 @@ class BacktestFill(FillBase):
         if fill_event.execute_type in ['LIMIT', 'STOP']:
             position = last_position
         else:
-            position = last_position + units * fill_event.direction
+            position = int(last_position + units * fill_event.direction)
         logger.info('position in date: {} {}'.format(position, fill_event.date))
         self.position.add(fill_event.date, position)
 
@@ -81,10 +82,11 @@ class BacktestFill(FillBase):
         更新保证金
         根据position确定，多头时保证金为正，空头时保证金为负
         暂时只考虑了期货，以当条bar的收盘价为当日结算价
-        当日交易保证金 = 当日结算价 × 当日结束交易后的持仓总量 × 交易保证金比例
+        当日交易保证金 = 持仓均价 × 当日结束交易后的持仓总量 × 交易保证金比例
         """
         margin = 0
         cur_position = self.position[-1]
+        avg_price = self.avg_price[-1]
         if fill_event.execute_type in ['LIMIT', 'STOP']:
             pass
         else:
@@ -93,10 +95,10 @@ class BacktestFill(FillBase):
             logger.info('fill_event.execute_type in date：{} in {}'.format(fill_event.execute_type, fill_event.date))
             # margin = fill_event.per_margin * (
             #     cur_position * fill_event.mult * cur_close)
-            logger.info('fill_event.per_margin * cur_position * cur_close * 300: {}, {}, {}'.format(
-                fill_event.per_margin, cur_position, cur_close, 300))
-            # 保证金不能为负，按实际缴纳金额计算
-            margin = fill_event.per_margin * units * cur_close * 300
+            logger.info('fill_event.per_margin * cur_position * avg_price * fill_event.mult: {}, {}, {}, {}'.format(
+                fill_event.per_margin, cur_position, avg_price, fill_event.mult))
+            # 保证金不能为负，用持仓均价计算，不用当日结算价计算，保留两位小数
+            margin = np.round(fill_event.per_margin * units * avg_price * fill_event.mult, 2)
         logger.info('margin in date: {} {}'.format(margin, fill_event.date))
         self.margin.add(fill_event.date, margin)
 
@@ -111,19 +113,20 @@ class BacktestFill(FillBase):
             pass
         elif fill_event.order_type in ['SELL', 'BUY']:
             # per_comm *= fill_event.mult
-            commission = units * fill_event.price * per_comm * 300
+            # 保留两位小数
+            commission = np.round(units * fill_event.price * per_comm * fill_event.mult, 2)
             logger.debug('commission {}'.format(commission))
             logger.info('fill_event.units {}'.format(fill_event.units))
             logger.info('fill_event.price in update_commission: {}'.format(fill_event.price))
             logger.info('per_comm in update_commission: {}'.format(per_comm))
         logger.info('commission in date in update_commission: {} {}'.format(commission, fill_event.date))
+        logger.info('commission.total in date in update_commission: {} {}'.format(commission, fill_event.date))
         self.commission.add(fill_event.date, commission)
 
     def update_avg_price(self, fill_event):
         """
         更新均价
         """
-        f = fill_event
         avg_price = self.avg_price[-1]
         last = self.position[-2]  # 上一个仓位
         cur = self.position[-1]  # 刚刚更新的仓位
@@ -131,75 +134,79 @@ class BacktestFill(FillBase):
         if cur == 0:  # 平仓了，
             avg_price = 0
         else:  # 未平仓
-            if f.execute_type in ['LIMIT', 'STOP']:
+            if fill_event.execute_type in ['LIMIT', 'STOP']:
                 pass
             # 上一次仓位为0，本次开仓，均价即为本次执行价
             elif last == 0:
-                avg_price = f.price
+                avg_price = fill_event.price
             # 上一次仓位为多头，即买入了仓位，当最新仓位仍为多头时，均价 = 总成交额 / 最新仓位
             # 当最新仓位为负时，即卖出平仓后又卖出开仓了，均价即为卖出的执行价
             elif last > 0:
-                if f.order_type == 'BUY':
-                    avg_price = (last * avg_price + f.units * f.price) / cur
-                if f.order_type == 'SELL':
+                if fill_event.order_type == 'BUY':
+                    avg_price = (last * avg_price + fill_event.units * fill_event.price) / cur
+                if fill_event.order_type == 'SELL':
                     if cur > 0:
-                        avg_price = (last * avg_price - f.units * f.price) / cur
+                        avg_price = (last * avg_price - fill_event.units * fill_event.price) / cur
                     elif cur < 0:
-                        avg_price = f.price
+                        avg_price = fill_event.price
             # 上一次仓位为空头时，当最新仓位变为多头时，即买入平仓后又买入开仓了，
             # 均价即为买入的执行价；否则，均价 = 总成交额 / 最新仓位
             elif last < 0:
-                if f.order_type == 'BUY':
+                if fill_event.order_type == 'BUY':
                     if cur > 0:
-                        avg_price = f.price
+                        avg_price = fill_event.price
                     elif cur < 0:
-                        avg_price = (-last * avg_price - f.units * f.price) / cur
-                elif f.order_type == 'SELL':
-                    avg_price = (-last * avg_price + f.units * f.price) / cur
+                        avg_price = (-last * avg_price - fill_event.units * fill_event.price) / cur
+                elif fill_event.order_type == 'SELL':
+                    avg_price = (-last * avg_price + fill_event.units * fill_event.price) / cur
         logger.info('avg_price in date in update_avg_price: {} {}'.format(avg_price, fill_event.date))
-        self.avg_price.add(f.date, abs(avg_price))
+        self.avg_price.add(fill_event.date, avg_price)
 
     def update_unrealized_gain_and_loss(self, fill_event, units):
         """
         更新浮动盈亏，浮动盈亏 = （现价 - 现均价） × 现仓位 × 单位（300）
-        更新浮动盈亏，单位默认为300
+        # 更新浮动盈亏，单位默认为300
         # 买入开仓时，浮动盈亏 = （结算价 - 买入价）× 单位 × 手数
         # 卖出开仓时，浮动盈亏 = （卖出价 - 结算价）× 单位 × 手数
         """
-        # cur_position = self.position[-1]
-        # cur_avg = self.avg_price[-1]
+        cur_position = self.position[-1]
+        cur_avg = self.avg_price[-1]
         cur_close = fill_event.feed.cur_bar.cur_close
         # cur_high = fill_event.feed.cur_bar.cur_high
         # cur_low = fill_event.feed.cur_bar.cur_low
-        unrealized_G_L = 0
-        # unrealized_G_L = unrealized_G_L_high= unrealized_G_L_low = 0
+        unrealized_g_l = 0
+        # unrealized_g_l = unrealized_g_l_high= unrealized_g_l_low = 0
 
         #
-        # if cur_avg == 0:
-        #     unrealized_G_L = unrealized_G_L_high = unrealized_G_L_low = 0
-        # else:
-        #     diff = cur_close - cur_avg
+        if cur_avg == 0:
+            unrealized_g_l = 0
+        #     unrealized_g_l = unrealized_g_l_high = unrealized_g_l_low = 0
+        else:
+            diff = cur_close - cur_avg
         #     diff_h = cur_high - cur_avg
         #     diff_l = cur_low - cur_avg
-        #     unrealized_G_L = diff * cur_position * fill_event.mult
-        #     unrealized_G_L_high = diff_h * cur_position * fill_event.mult
-        #     unrealized_G_L_low = diff_l * cur_position * fill_event.mult
-        if fill_event.order_type == 'BUY':
-            unrealized_G_L = (cur_close - fill_event.price) * 300 * units
-            # unrealized_G_L_high = (cur_high - fill_event.price) * 300 * units
-            # unrealized_G_L_low = (cur_low - fill_event.price) * 300 * units
-        if fill_event.order_type == 'SELL':
-            unrealized_G_L = (fill_event.price - cur_close) * 300 * units
-            # unrealized_G_L_high = (fill_event.price - cur_high) * 300 * units
-            # unrealized_G_L_low = (fill_event.price - cur_low) * 300 * units
+            # 保留两位小数
+            unrealized_g_l = np.round(diff * cur_position * fill_event.mult, 2)
+            if not unrealized_g_l:  # 0.0, -0.0, 0 等情况，取整
+                unrealized_g_l = int(unrealized_g_l)
+        #     unrealized_g_l_high = diff_h * cur_position * fill_event.mult
+        #     unrealized_g_l_low = diff_l * cur_position * fill_event.mult
+        # if fill_event.order_type == 'BUY':
+            # unrealized_g_l = (cur_close - fill_event.price) * 300 * units
+            # unrealized_g_l_high = (cur_high - fill_event.price) * 300 * units
+            # unrealized_g_l_low = (cur_low - fill_event.price) * 300 * units
+        # if fill_event.order_type == 'SELL':
+            # unrealized_g_l = (fill_event.price - cur_close) * 300 * units
+            # unrealized_g_l_high = (fill_event.price - cur_high) * 300 * units
+            # unrealized_g_l_low = (fill_event.price - cur_low) * 300 * units
         self.unrealized_gain_and_loss.add(
             fill_event.date,
-            unrealized_G_L,
-            # unrealized_G_L_high,
-            # unrealized_G_L_low
+            unrealized_g_l,
+            # unrealized_g_l_high,
+            # unrealized_g_l_low
             )
-        logger.info('cur_close fill_event.price in date: {} {}'.format(cur_close, fill_event.price, fill_event.date))
-        logger.info('unrealized_G_L in date: {} {}'.format(unrealized_G_L, fill_event.date))
+        logger.info('cur_close fill_event.price in date: {} {} {}'.format(cur_close, fill_event.price, fill_event.date))
+        logger.info('unrealized_g_l in date: {} {}'.format(unrealized_g_l, fill_event.date))
 
     def update_balance(self, fill_event):
         """
@@ -213,13 +220,14 @@ class BacktestFill(FillBase):
         logger.info('self.realized_gain_and_loss.list: {}'.format(
             self.realized_gain_and_loss.list))
         total_profit = total_re_profit + self.unrealized_gain_and_loss.total()
-        total_commission = self.commission.total()
+        total_commission = sum(self.commission.list)
 
-        balance = self.initial_cash + total_profit - total_commission
+        # balance = np.round(self.initial_cash + total_profit - total_commission, 2)
+        balance = np.round(self.initial_cash + total_re_profit - total_commission, 2)
 
-        balance += self.initial_cash - total_commission
+        # balance += self.initial_cash - total_commission
 
-        logger.debug('fill_event.date, balance: {}'.format(
+        logger.debug('fill_event.date, balance: {} {}'.format(
             fill_event.date, balance))
         logger.info('balance in date: {} {}'.format(balance, fill_event.date))
         self.balance.add(fill_event.date, balance)
@@ -242,8 +250,10 @@ class BacktestFill(FillBase):
         更新现金，现金 = 资产余额 - 本次已缴纳的保证金
         """
         cur_balance = self.balance[-1]
-        total_margin = self.margin.total()
-        cash = cur_balance - total_margin
+        # total_margin = self.margin.total()
+        margin = self.margin[-1]
+        # cash = cur_balance - total_margin
+        cash = np.round(cur_balance - margin, 2)
         logger.debug('fill_event.date, cash: {} {}'.format(fill_event.date, cash))
         logger.info('cash in date: {} {}'.format(cash, fill_event.date))
         self.cash.add(fill_event.date, cash)
@@ -256,25 +266,28 @@ class BacktestFill(FillBase):
         """
         units = fill_event.units
         logger.info('units: {}'.format(units))
+        # 更新顺序：仓位-均价-保证金、手续费-浮动盈亏-余额-可用资金
         self.update_position(fill_event, units)
+        self.update_avg_price(fill_event)
         self.update_margin(fill_event, units)
         self.update_commission(fill_event, units)
-        self.update_avg_price(fill_event)
         self.update_unrealized_gain_and_loss(fill_event, units)
         self.update_balance(fill_event)
         self.update_cash(fill_event)
 
-        self.position.del_last()
-        self.margin.del_last()
-        self.commission.del_last()
-        self.avg_price.del_last()
-        self.unrealized_gain_and_loss.del_last()
-        self.balance.del_last()
-        self.cash.del_last()
+        # self.position.del_last()
+        # self.margin.del_last()
+        # self.commission.del_last()
+        # self.avg_price.del_last()
+        # self.unrealized_gain_and_loss.del_last()
+        # self.balance.del_last()
+        # self.cash.del_last()
 
     def update_time_index(self, feed_list):
         """
-        保持每日开盘后的数据更新
+        保持每日开盘后的数据更新，
+        若当日无交易，则更新后的数据即为当日数据，
+        若当日有交易，则交易后的数据覆盖开盘后更新的数据
         """
         date = feed_list[-1].cur_bar.cur_date
         logger.info('---------------------------------------------------------------')
@@ -288,7 +301,7 @@ class BacktestFill(FillBase):
         # low = feed.cur_bar.cur_low
         logger.info('price in date in update_time_index: {} {}'.format(price, date))
         self.set_dataseries_instrument(feed.instrument)
-        self.position.copy_last(date)  # 更新仓位
+        # self.position.copy_last(date)  # 更新仓位
         # logger.debug('self.position in backtestfill: {}'.format(self.position))
         # logger.info('self.position in backtestfill: {}'.format(self.position[-1]))
         logger.info('self.position[-1] in date in update_time_index: {} {}'.format(self.position[-1], date))
@@ -296,44 +309,52 @@ class BacktestFill(FillBase):
         # 更新保证金
         # margin = self.position[-1] * price * feed.per_margin * feed.mult
         # margin = feed.per_margin * feed.units * price * 300
-        margin = 0
+        margin = self.margin[-1]  # 未持仓时，保证金 = 上一次开仓保证金 或 0（平仓后）
         logger.info('feed.units: {}'.format(feed.units))
         # margin = abs(self.position[-1]) * price * feed.per_margin
         logger.info('margin in date in update_time_index: {} {}'.format(margin, date))
         self.margin.add(date, margin)
         # 更新平均价格
-        self.avg_price.copy_last(date)
+        # self.avg_price.copy_last(date)
         # 更新手续费，注意期货手续费需要重新计算
-        commission = 0
+        commission = 0  # 无交易进行时，手续费 = 0
         self.commission.add(date, commission)
         logger.info('commission in date in update_time_index: {} {}'.format(self.commission[-1], date))
         # self.commission.add(date, commission)
         # 更新浮动盈亏
         cur_avg = self.avg_price[-1]
+        self.avg_price.add(date, cur_avg)
         cur_position = self.position[-1]
-        logger.info('cur_position in date update_time_index: {} {}'.format(cur_position, date))
-        unrealized_G_L = (price - cur_avg) * cur_position * feed.mult
-        # unrealized_G_L_high = (high - cur_avg) * cur_position * feed.mult
-        # unrealized_G_L_low = (low - cur_avg) * cur_position * feed.mult
+        self.position.add(date, cur_position)
+        logger.info('cur_position, cur_avg in date update_time_index: {} {} {}'.format(cur_position,cur_avg, date))
+        # unrealized_g_l = (price - cur_avg) * cur_position * feed.mult
+        unrealized_g_l = np.round((price - cur_avg) * abs(cur_position) * feed.mult, 2)
+        # unrealized_g_l_high = (high - cur_avg) * cur_position * feed.mult
+        # unrealized_g_l_low = (low - cur_avg) * cur_position * feed.mult
         if self.avg_price[-1] == 0:
-            unrealized_G_L = 0
-            # unrealized_G_L = unrealized_G_L_high = unrealized_G_L_low = 0
+            unrealized_g_l = 0
+            # unrealized_g_l = unrealized_g_l_high = unrealized_g_l_low = 0
         logger.info('cur_avg in date in update_time_index: {} {}'.format(cur_avg, date))
-        logger.info('unrealized_G_L in date in update_time_index: {} {}'.format(unrealized_G_L, date))
+        logger.info('unrealized_g_l in date in update_time_index: {} {}'.format(unrealized_g_l, date))
         self.unrealized_gain_and_loss.add(
             date,
-            unrealized_G_L,
-            # unrealized_G_L_high,
-            # unrealized_G_L_low
+            unrealized_g_l,
+            # unrealized_g_l_high,
+            # unrealized_g_l_low
             )
 
         # 更新balance
-        commission = self.commission[-1]
+        last_balance = self.balance[-1]
         total_re_profit = sum(self.realized_gain_and_loss.list)
         total_profit = total_re_profit + self.unrealized_gain_and_loss.total()
         logger.info('total_profit in date in update_time_index: {} {}'.format(total_profit, date))
-
-        balance = self.initial_cash + total_profit - commission
+        logger.info('sum(self.commission.list) in date in update_time_index: {} {}'.format(sum(self.commission.list), date))
+        logger.info('self.commission.list in date in update_time_index: {} {}'.format(self.commission.list, date))
+        total_commission = np.round(sum(self.commission.list), 2)
+        logger.info('total_re_profit: {}'.format(total_re_profit))
+        logger.info('total_commission:{}'.format(total_commission))
+        # 持仓时余额 = 上一次开仓后的余额 + 当日浮动盈亏
+        balance = np.round(last_balance + unrealized_g_l, 2)
         logger.info('balance in date in update_time_index: {} {}'.format(balance, date))
         self.balance.add(date, balance)
 
@@ -354,9 +375,12 @@ class BacktestFill(FillBase):
         # self.balance.add(date, balance, balance_high, balance_low)
 
         # 更新cash
-        total_margin = self.margin.total()
-        logger.info('total_margin in update_time_index: {}'.format(total_margin))
-        cash = self.balance[-1] - total_margin
+        # total_margin = self.margin.total()
+        logger.info('total_margin in update_time_index: {}'.format(margin))
+        if self.position[-1] == 0:
+            cash = self.balance[-1]
+        else:
+            cash = np.round(self.balance[-1] - margin, 2)
         logger.info('cash in date in update_time_index: {} {}'.format(cash, date))
         self.cash.add(date, cash)
         logger.debug(222222)
@@ -389,8 +413,10 @@ class BacktestFill(FillBase):
         extra_list = [
             'TAKE_PROFIT_ORDER', 'STOP_LOSS_ORDER', 'TRAILING_STOP_ORDER']
 
+        date = fill_event.date
+
         def get_re_profit(trade_units):
-            re_profit = (f.price - i.price) * trade_units * f.mult * i.direction
+            re_profit = np.round((f.price - i.price) * trade_units * f.mult * i.direction, 2)
             self.realized_gain_and_loss.add(f.date, re_profit)
             logger.debug('self.realized_gain_and_loss in backtestfill: {}'.format(self.realized_gain_and_loss))
             logger.debug('self.realized_gain_and_loss.date in backtestfill: {}'.format(self.realized_gain_and_loss.date))
@@ -398,7 +424,8 @@ class BacktestFill(FillBase):
                 if self.realized_gain_and_loss.date[-2] is f.date:
                     new_realized_g_l = (
                         self.realized_gain_and_loss[-1] + self.realized_gain_and_loss[-2])
-                    self.realized_gain_and_loss.update_cur(new_realized_g_l)
+                    # self.realized_gain_and_loss.update_cur(new_realized_g_l)
+                    self.realized_gain_and_loss.add(date, new_realized_g_l)
                     self.realized_gain_and_loss.del_last()
 
         # 首先判断是否有情况四发生，即止盈、止损、移动止损

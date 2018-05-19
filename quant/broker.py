@@ -75,8 +75,8 @@ class Broker(BrokerBase):
             'TAKE_PROFIT_ORDER', 'TRAILING_STOP_ORDER'
         ]
         check_results = self.fill.cash[-1] > (
-            self.order_event.per_margin * self.order_event.units *
-            self.order_event.price * self.order_event.mult +
+            self.order_event.per_margin * self.order_event.lots *
+            self.order_event.price * self.order_event.units +
             self.fill.margin[-1] * self.order_event.direction
         ) or self.order_event.execute_type in execute_type
         return check_results
@@ -120,8 +120,8 @@ class Broker(BrokerBase):
 
     def notify(self):
         if self._notify:
-            logger.debug('{}, {}, {}, {} @ {}, units: {}, execute: {}'.format(
+            logger.debug('{}, {}, {}, {} @ {}, lots: {}, execute: {}'.format(
                 self.order_event.date, self.order_event.instrument,
                 self.order_event.order_type, self.order_event.status,
-                self.order_event.price, self.order_event.units,
+                self.order_event.price, self.order_event.lots,
                 self.order_event.execute_type))

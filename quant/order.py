@@ -6,9 +6,9 @@ from quant.logging_backtest import logger
 class OrderData(object):
     """处理Order数据，计算止盈、止损、追踪止损的价格"""
 
-    def __init__(self, instrument, units, price, take_profit, stop_loss,
+    def __init__(self, instrument, lots, price, take_profit, stop_loss,
                  trailing_stop, cur_bar, execute_mode, order_type):
-        self.units = units
+        self.lots = lots
         self.price = price
         self.take_profit = take_profit
         self.stop_loss = stop_loss
@@ -135,13 +135,13 @@ class OrderBase(object):
         self._execute_mode = market_event.execute_mode
         self._per_comm = market_event.per_comm
         self._per_margin = market_event.per_margin
-        self._mult = market_event.mult
+        self._units = market_event.units
         self._feed = market_event.feed
 
         # 在子类中被初始化的部分
         self._order_data = None
         self._date = None
-        self._units = None
+        self._lots = None
         self._price = None
         self._take_profit = None
         self._stop_loss = None
@@ -183,8 +183,8 @@ class OrderBase(object):
         return self._per_margin
 
     @property
-    def mult(self):
-        return self._mult
+    def units(self):
+        return self._units
 
     @property
     def feed(self):
@@ -199,8 +199,8 @@ class OrderBase(object):
         return self._date
 
     @property
-    def units(self):
-        return self._units
+    def lots(self):
+        return self._lots
 
     @property
     def price(self):
@@ -243,8 +243,8 @@ class OrderBase(object):
     def set_date(self, date):
         self._date = date
 
-    def set_units(self, units):
-        self._units = units
+    def set_lots(self, lots):
+        self._lots = lots
 
     def set_price(self, price):
         self._price = price
@@ -263,7 +263,7 @@ class OrderBase(object):
 
 
 class Order(OrderBase):
-    def execute(self, instrument, units, price, take_profit, stop_loss,
+    def execute(self, instrument, lots, price, take_profit, stop_loss,
                 trailing_stop):
         """执行"""
         if instrument is None:
@@ -271,7 +271,7 @@ class Order(OrderBase):
 
         self._order_data = OrderData(
             instrument=instrument,
-            units=units,
+            lots=lots,
             price=price,
             take_profit=take_profit,
             stop_loss=stop_loss,
@@ -286,7 +286,7 @@ class Order(OrderBase):
         self._instrument = self._order_data.instrument
         self._direction = self._order_data.direction
         self._date = self._order_data.date
-        self._units = self._order_data.units
+        self._lots = self._order_data.lots
         self._price = self._order_data.price
         logger.debug('self._price: {}'.format(self._price))
         self._take_profit = self._order_data.take_profit

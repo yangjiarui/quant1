@@ -1,7 +1,7 @@
 # coding:utf-8
 from abc import ABC, abstractmethod
 from quant.event import events, SignalEvent
-from quant.indicator import Indicator
+from quant.indicator import Indicator, Open, High, Low, Close, MaxHigh, MinLow, Cross
 from quant.order import BuyOrder, SellOrder, ExitAllOrder
 from quant.logging_backtest import logger
 
@@ -40,6 +40,14 @@ class StrategyBase(ABC):
     def __set_indicator(self):
         """设置技术指标"""
         self.indicator = Indicator(self.market_event)
+        self.open = Open(self.market_event)
+        self.high = High(self.market_event)
+        self.low = Low(self.market_event)
+        self.close = Close(self.market_event)
+        self.max_high = MaxHigh(self.market_event)
+        self.min_low = MinLow(self.market_event)
+        self.cross = Cross(self.market_event)
+
 
     def points(self, n):
         """

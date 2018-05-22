@@ -1,7 +1,7 @@
 # coding:utf-8
 from quant.strategy import Strategy
 from quant.main import Quant
-from quant.feedbase import CSVDataReader
+from quant.feedbase import CSV
 from quant.portfolio import Portfolio
 from quant.logging_backtest import logger
 import talib
@@ -19,22 +19,26 @@ class MyStrategy(Strategy):
         high = self.high
         low = self.low
         close = self.close
-        true_range = max(high - low, abs(close.data(1) - high), abs(close.data(1) - low))
-        average_true_range = talib.SMA(true_range, 20)
-        money = self.indicator.money()
+        # true_range = max(high - low, abs(close.data(1) - high), abs(close.data(1) - low))
+        # average_true_range = talib.SMA(true_range, 20)
+        average_true_range = self.average_true_range.data(5)
+        money = self.balance[-1]
         units = self.units
-        trade_lots = int(money * 0.01 / (units * average_true_range))
+        trade_lots = int(money * 0.01 / (units * average_true_range)) + 1
         total_trade_lots = 4 * trade_lots
-        max_high = self.max_high(20)
-        min_low = self.min_low(20)
+        max_high = self.max_high.data(5)
+        min_low = self.min_low.data(5)
         cross = self.cross
-
+        if cross.crossup(close, max_high):
+            self.buy(trade_lots)
+        if cross.crossdown(close, min_low):
+            self.sell(trade_lots)
 
 
 
 
 trade = Quant()
-data = CSVDataReader(
+data = CSV(
     # datapath='../data/IF_cleaned_data.csv',
     datapath='../data/CFFEX沪深300期货IF主连.csv',
     # datapath='/home/demlution/桌面/quant/data/IF_cleaned_data.csv',

@@ -113,6 +113,20 @@ class Indicator(IndicatorBase):
             return 0
 
 
+class DataInClassDict(dict):
+    """
+    用于储存表达式的字典
+    d = DataInClassDict()
+    d['a']['b']
+    d['a']['c']
+    d['c']['d']
+    >>>{'a': {'b': {}, 'c': {}}, 'c': {'d': {}}}
+    """
+    def __missing__(self, key):
+        value = self[key] = type(self)()
+        return value
+
+
 class Indicators(IndicatorBase):
     """
     自定义open
@@ -139,224 +153,310 @@ class Indicators(IndicatorBase):
     bb = B()
     print(aa + bb)  # 1 + 2 = 3, 只能做一次加法，多次加法会出错，如aa + bb + aa
     """
-    def __init__(self, market_event):
+    def __init__(self, market_event, field, period=1):
         super().__init__(market_event)
         self.fill = market_event.fill
+        self.field = field
+        self.period = period
+        self.data_dict = DataInClassDict()
 
-    @classmethod
-    def data(cls, period):
-        cls.period = period
-        # return self.period
-        return 0.0  # 防止后面定义的add等方法出错
+    def data(self):
+        data = self.get_basic_data(self.period, ohlc=self.field)[0]
+        return data
 
-    @classmethod
-    def data_list(cls):
-        pass
+    def data_list(self):
+        data_list = self.get_basic_data(self.period, ohlc=self.field)
+        return data_list
+
+    def moving_average(self):
+        # 保存当前的和前一日期的简单移动平均值
+        ma_list = []
+        ma_list.append(self.get_basic_data(self.period + 1, self.field)[:-1])
+        ma_list.append(self.get_basic_data(self.period, self.field))
+        return ma_list
 
     def __add__(self, other):
         if isinstance(other, Indicators):
-            return self.data(self.period) + other.data(self.period)
+            self.data_dict['arg']['arg1'] = self
+            self.data_dict['func'] = '+'
+            self.data_dict['arg']['arg2'] = other
+            return self.data() + other.data()
         if isinstance(other, int) or isinstance(other, float):
-            return self.data(self.period) + other
+            return self.data() + other
 
     def __sub__(self, other):
         if isinstance(other, Indicators):
-            return self.data(self.period) - other.data(self.period)
+            self.data_dict['arg']['arg1'] = self
+            self.data_dict['func'] = '-'
+            self.data_dict['arg']['arg2'] = other
+            return self.data() - other.data()
         if isinstance(other, int) or isinstance(other, float):
-            return self.data(self.period) - other
+            return self.data() - other
 
     def __mul__(self, other):
         if isinstance(other, Indicators):
-            return self.data(self.period) * other.data(self.period)
+            self.data_dict['arg']['arg1'] = self
+            self.data_dict['func'] = '*'
+            self.data_dict['arg']['arg2'] = other
+            return self.data() * other.data()
         if isinstance(other, int) or isinstance(other, float):
-            return self.data(self.period) * other
+            return self.data() * other
 
     def __truediv__(self, other):
         if isinstance(other, Indicators):
-            return self.data(self.period) / other.data(self.period)
+            self.data_dict['arg']['arg1'] = self
+            self.data_dict['func'] = '/'
+            self.data_dict['arg']['arg2'] = other
+            return self.data() / other.data()
         if isinstance(other, int) or isinstance(other, float):
-            return self.data(self.period) / other
+            return self.data() / other
 
 
-class Open(Indicators):
-    def __init__(self, market_event):
-        super().__init__(market_event)
-
-    @classmethod
-    def data(cls, period):
-        cls.open = cls.get_basic_data(period, ohlc='open')[0]
-        return cls
-
-    @classmethod
-    def data_list(cls, period=3):
-        cls.data_list = cls.get_basic_data(period, ohlc='open')
-        return cls
+class FuncBase(object):
+    def __init__(self, field):
+        self.data_dict = DataInClassDict()
+        self.data_dict['func'] = 'funcname'
+        self.data_dict['arg'] = [field]
 
 
-class High(Indicators):
-    def __init__(self, market_event):
-        super().__init__(market_event)
-
-    @classmethod
-    def data(cls, instance, period):
-        cls.high = cls.get_basic_data(instance, period, ohlc='high')[0]
-        return cls
-
-    @classmethod
-    def data_list(cls, period=3):
-        cls.data_list = cls.get_basic_data(period, ohlc='high')
+class Max(FuncBase):
+    def __init__(self, field):
+        super().__init__(field)
+        self.data_dict['func'] = 'max'
 
 
-class Low(Indicators):
-    def __init__(self, market_event):
-        super().__init__(market_event)
-
-    @classmethod
-    def data(cls, period):
-        cls.low = cls.get_basic_data(period, ohlc='low')[0]
-        return cls
-
-    @classmethod
-    def data_list(cls, period=3):
-        cls.data_list = cls.get_basic_data(period, ohlc='low')
-        return cls
+class Min(FuncBase):
+    def __init__(self, field):
+        super().__init__(field)
+        self.data_dict['func'] = 'min'
 
 
-class Close(Indicators):
-    def __init__(self, market_event):
-        super().__init__(market_event)
-        self.market_event = market_event
-
-    @classmethod
-    def data(cls, period):
-        cls.close = cls.get_basic_data(period, ohlc='close')[0]
-        return cls
-
-    @classmethod
-    def data_list(cls, period=3):
-        cls.data_list = cls.get_basic_data(period, ohlc='close')
-        return cls
+class Abs(FuncBase):
+    def __init__(self, field):
+        super().__init__(field)
+        self.data_dict['func'] = 'abs'
+        self.data_dict['arg'] = field
 
 
-class MaxHigh(Indicators):
-    def __init__(self, market_event):
-        super().__init__(market_event)
-        self.market_event = market_event
-
-    def data(self, period):
-        high = self.get_basic_data(period, ohlc='high')
-        self.high = max(high)
-        return MaxHigh(self.market_event)
-
-    def data_list(self):
-        max_high_list = []
-        # 最近三个period周期内的最高价
-        for i in range(3):
-            if i == 0:
-                max_high_data = max(self.get_basic_data(self.period))
-            else:
-                max_high_data = max(self.get_basic_data(self.period + i)[:-i])
-            max_high_list.append(max_high_data)
-        self.max_high_list = max_high_list
-        return MaxHigh(self.market_event)
+class MovingAverage(FuncBase):
+    def __init__(self, field):
+        super().__init__(field)
+        self.data_dict['func'] = 'moving_average'
 
 
-class MinLow(Indicators):
-    def __init__(self, market_event):
-        super().__init__(market_event)
-
-    def data(self, period):
-        low = self.get_basic_data(period, ohlc='low')
-        return max(low)
-
-    def data_list(self):
-        min_low_list = []
-        # 最近三个period周期内的最高价
-        for i in range(3):
-            if i == 0:
-                min_low_data = max(self.get_basic_data(self.period))
-            else:
-                min_low_data = max(self.get_basic_data(self.period + i)[:-i])
-            min_low_list.append(min_low_data)
-        return min_low_list
+def moving_average(arg, period=1):
+    """怎么定义？？？"""
+    if isinstance(arg, Indicators):
+        # 保存当前的和前一日期的简单移动平均值
+        ma_list = []
+        ma_list.append(arg.get_basic_data(period + 1, arg.field)[:-1])
+        ma_list.append(arg.get_basic_data(period, arg.field))
 
 
-class Cross(Indicators):
-    def __init__(self, market_event):
-        super().__init__(market_event)
-
-    def crossup(self, arg1, arg2):
-        if isinstance(arg1, Indicators) and isinstance(arg2, Indicators):
-            arg1_list = arg1.data_list()
-            arg2_list = arg2.data_list()
-            if arg1_list[-1] > arg2_list[-1]:
-                if arg1_list[-2] == arg2_list[-2]:
-                    if arg1_list[-3] < arg2_list[-3]:
-                        return True
-                if arg1_list[-2] < arg2_list[-2]:
-                    return True
-            else:
-                return False
-        else:
-            return False
-
-    def crossdown(self, arg1, arg2):
-        if isinstance(arg1, Indicators) and isinstance(arg2, Indicators):
-            arg1_list = arg1.data_list()
-            arg2_list = arg2.data_list()
-            if arg1_list[-1] < arg2_list[-1]:
-                if arg1_list[-2] == arg2_list[-2]:
-                    if arg1_list[-3] > arg2_list[-3]:
-                        return True
-                if arg1_list[-2] > arg2_list[-2]:
-                    return True
-            else:
-                return False
-        else:
-            return False
+class IntPart(FuncBase):
+    def __init__(self, field):
+        super().__init__(field)
+        self.data_dict['func'] = 'int'
 
 
-class AverageTrueRange(Indicators):
-    def __init__(self, market_event):
-        super().__init__(market_event)
-        self.high = High(market_event)
-        self.low = Low(market_event)
-        self.close = Close(market_event)
-
-    def data(self, period):
-        tr_list = []
-        _high = self.high.data_list(period)  # period周期内的最高价
-        _low = self.low.data_list(period)  # period周期内的最低价
-        _close = self.close.data_list(period + 1)  # period+1周期内的收盘价
-        for i in range(period):
-            true_range = max(
-                _high[i] - _low[i], abs(_close[i] - _high[i]), abs(_close[i] - _low[i]))
-            tr_list.append(true_range)
-        atr = sum(tr_list) / period
-        return atr
+class MaxHigh(FuncBase):
+    def __init__(self, field):
+        super().__init__(field)
+        self.data_dict['func'] = 'max_high'
 
 
-class MovingAverage(Indicators):
-    """
-    收盘价的简单移动平均值
-    """
-    def __init__(self, marketevent):
-        super().__init__(marketevent)
+class MinLow(FuncBase):
+    def __init__(self, field):
+        super().__init__(field)
+        self.data_dict['func'] = 'min_low'
 
-    def data(self, period):
-        low = self.get_basic_data(period, ohlc='close')
-        return max(low)
 
-    def data_list(self):
-        moving_average_list = []
-        # 最近三个period周期内的收盘价的简单移动平均值
-        for i in range(3):
-            if i == 0:
-                moving_average_data = max(self.get_basic_data(self.period))
-            else:
-                moving_average_data = max(self.get_basic_data(self.period + i)[:-i])
-            moving_average_list.append(moving_average_data)
-        return moving_average_list
+class CrossUp(FuncBase):
+    def __init__(self, field):
+        super().__init__(field)
+        self.data_dict['func'] = 'crossup'
+
+
+class CrossDown(FuncBase):
+    def __init__(self, field):
+        super().__init__(field)
+        self.data_dict['func'] = 'crossdown'
+
+
+
+
+# class Open(Indicators):
+#     def __init__(self, market_event):
+#         super().__init__(market_event)
+#
+#     def data(self, period):
+#         open = self.get_basic_data(period, ohlc='open')[0]
+#         return open
+#
+#     def data_list(self, period=3):
+#         data_list = self.get_basic_data(period, ohlc='open')
+#         return data_list
+#
+#
+# class High(Indicators):
+#     def __init__(self, market_event):
+#         super().__init__(market_event)
+#
+#     def data(self, period):
+#         high = self.get_basic_data(period, ohlc='high')[0]
+#         return high
+#
+#     def data_list(self, period=3):
+#         data_list = self.get_basic_data(period, ohlc='high')
+#         return data_list
+#
+#
+# class Low(Indicators):
+#     def __init__(self, market_event):
+#         super().__init__(market_event)
+#
+#     def data(self, period):
+#         low = self.get_basic_data(period, ohlc='low')[0]
+#         return low
+#
+#     def data_list(self, period=3):
+#         data_list = self.get_basic_data(period, ohlc='low')
+#         return data_list
+#
+#
+# class Close(Indicators):
+#     def __init__(self, market_event):
+#         super().__init__(market_event)
+#         self.market_event = market_event
+#
+#     def data(self, period):
+#         close = self.get_basic_data(period, ohlc='close')[0]
+#         return close
+#
+#     def data_list(self, period=3):
+#         data_list = self.get_basic_data(period, ohlc='close')
+#         return data_list
+
+
+# class MaxHigh(Indicators):
+#     def __init__(self, market_event):
+#         super().__init__(market_event)
+#         self.market_event = market_event
+#
+#     def data(self, period):
+#         high = self.get_basic_data(period, ohlc='high')
+#         self.high = max(high)
+#         return MaxHigh(self.market_event)
+#
+#     def data_list(self):
+#         max_high_list = []
+#         # 最近三个period周期内的最高价
+#         for i in range(3):
+#             if i == 0:
+#                 max_high_data = max(self.get_basic_data(self.period))
+#             else:
+#                 max_high_data = max(self.get_basic_data(self.period + i)[:-i])
+#             max_high_list.append(max_high_data)
+#         self.max_high_list = max_high_list
+#         return MaxHigh(self.market_event)
+#
+#
+# class MinLow(Indicators):
+#     def __init__(self, market_event):
+#         super().__init__(market_event)
+#
+#     def data(self, period):
+#         low = self.get_basic_data(period, ohlc='low')
+#         return max(low)
+#
+#     def data_list(self):
+#         min_low_list = []
+#         # 最近三个period周期内的最高价
+#         for i in range(3):
+#             if i == 0:
+#                 min_low_data = max(self.get_basic_data(self.period))
+#             else:
+#                 min_low_data = max(self.get_basic_data(self.period + i)[:-i])
+#             min_low_list.append(min_low_data)
+#         return min_low_list
+
+
+# class Cross(Indicators):
+#     def __init__(self, market_event):
+#         super().__init__(market_event)
+#
+#     def crossup(self, arg1, arg2):
+#         if isinstance(arg1, Indicators) and isinstance(arg2, Indicators):
+#             arg1_list = arg1.data_list()
+#             arg2_list = arg2.data_list()
+#             if arg1_list[-1] > arg2_list[-1]:
+#                 if arg1_list[-2] == arg2_list[-2]:
+#                     if arg1_list[-3] < arg2_list[-3]:
+#                         return True
+#                 if arg1_list[-2] < arg2_list[-2]:
+#                     return True
+#             else:
+#                 return False
+#         else:
+#             return False
+#
+#     def crossdown(self, arg1, arg2):
+#         if isinstance(arg1, Indicators) and isinstance(arg2, Indicators):
+#             arg1_list = arg1.data_list()
+#             arg2_list = arg2.data_list()
+#             if arg1_list[-1] < arg2_list[-1]:
+#                 if arg1_list[-2] == arg2_list[-2]:
+#                     if arg1_list[-3] > arg2_list[-3]:
+#                         return True
+#                 if arg1_list[-2] > arg2_list[-2]:
+#                     return True
+#             else:
+#                 return False
+#         else:
+#             return False
+#
+#
+# class AverageTrueRange(Indicators):
+#     def __init__(self, market_event):
+#         super().__init__(market_event)
+#         self.high = High(market_event)
+#         self.low = Low(market_event)
+#         self.close = Close(market_event)
+#
+#     def data(self, period):
+#         tr_list = []
+#         _high = self.high.data_list(period)  # period周期内的最高价
+#         _low = self.low.data_list(period)  # period周期内的最低价
+#         _close = self.close.data_list(period + 1)  # period+1周期内的收盘价
+#         for i in range(period):
+#             true_range = max(
+#                 _high[i] - _low[i], abs(_close[i] - _high[i]), abs(_close[i] - _low[i]))
+#             tr_list.append(true_range)
+#         atr = sum(tr_list) / period
+#         return atr
+#
+#
+# class MovingAverage(Indicators):
+#     """
+#     收盘价的简单移动平均值
+#     """
+#     def __init__(self, marketevent):
+#         super().__init__(marketevent)
+#
+#     def data(self, period):
+#         low = self.get_basic_data(period, ohlc='close')
+#         return max(low)
+#
+#     def data_list(self):
+#         moving_average_list = []
+#         # 最近三个period周期内的收盘价的简单移动平均值
+#         for i in range(3):
+#             if i == 0:
+#                 moving_average_data = max(self.get_basic_data(self.period))
+#             else:
+#                 moving_average_data = max(self.get_basic_data(self.period + i)[:-i])
+#             moving_average_list.append(moving_average_data)
+#         return moving_average_list
 
 
 # class Tree(object):

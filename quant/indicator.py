@@ -159,6 +159,7 @@ class Indicators(IndicatorBase):
         self.field = field
         self.period = period
         self.data_dict = DataInClassDict()
+        self.data_dict['arg'] = []
 
     def data(self):
         data = self.get_basic_data(self.period, ohlc=self.field)[0]
@@ -177,36 +178,36 @@ class Indicators(IndicatorBase):
 
     def __add__(self, other):
         if isinstance(other, Indicators):
-            self.data_dict['arg']['arg1'] = self
+            self.data_dict['arg'].append(self)
             self.data_dict['func'] = '+'
-            self.data_dict['arg']['arg2'] = other
+            self.data_dict['arg'].append(other)
             return self.data() + other.data()
         if isinstance(other, int) or isinstance(other, float):
             return self.data() + other
 
     def __sub__(self, other):
         if isinstance(other, Indicators):
-            self.data_dict['arg']['arg1'] = self
+            self.data_dict['arg'].append(self)
             self.data_dict['func'] = '-'
-            self.data_dict['arg']['arg2'] = other
+            self.data_dict['arg'].append(other)
             return self.data() - other.data()
         if isinstance(other, int) or isinstance(other, float):
             return self.data() - other
 
     def __mul__(self, other):
         if isinstance(other, Indicators):
-            self.data_dict['arg']['arg1'] = self
+            self.data_dict['arg'].append(self)
             self.data_dict['func'] = '*'
-            self.data_dict['arg']['arg2'] = other
+            self.data_dict['arg'].append(other)
             return self.data() * other.data()
         if isinstance(other, int) or isinstance(other, float):
             return self.data() * other
 
     def __truediv__(self, other):
         if isinstance(other, Indicators):
-            self.data_dict['arg']['arg1'] = self
+            self.data_dict['arg'].append(self)
             self.data_dict['func'] = '/'
-            self.data_dict['arg']['arg2'] = other
+            self.data_dict['arg'].append(other)
             return self.data() / other.data()
         if isinstance(other, int) or isinstance(other, float):
             return self.data() / other

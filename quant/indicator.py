@@ -153,13 +153,14 @@ class Indicators(IndicatorBase):
     bb = B()
     print(aa + bb)  # 1 + 2 = 3, 只能做一次加法，多次加法会出错，如aa + bb + aa
     """
-    def __init__(self, market_event, field, period=1):
+    def __init__(self, market_event, field=None, period=None):
         super().__init__(market_event)
         self.fill = market_event.fill
         self.field = field
         self.period = period
         self.data_dict = DataInClassDict()
         self.data_dict['arg'] = []
+        self.data_dict['func'] = []
 
     def data(self):
         if self.field is 'money':
@@ -185,40 +186,45 @@ class Indicators(IndicatorBase):
         return ma_list
 
     def __add__(self, other):
-        if isinstance(other, Indicators):
-            self.data_dict['arg'].append(self)
-            self.data_dict['func'] = '+'
-            self.data_dict['arg'].append(other)
-            return self.data() + other.data()
-        if isinstance(other, int) or isinstance(other, float):
-            return self.data() + other
+        copy_self = copy(self)
+        self.data_dict['arg'].append(copy_self)
+        self.data_dict['func'] = '+'
+        self.data_dict['arg'].append(other)
+        return self
 
     def __sub__(self, other):
-        if isinstance(other, Indicators):
-            self.data_dict['arg'].append(self)
-            self.data_dict['func'] = '-'
-            self.data_dict['arg'].append(other)
-            return self.data() - other.data()
-        if isinstance(other, int) or isinstance(other, float):
-            return self.data() - other
+        copy_self = copy(self)
+        self.data_dict['arg'].append(copy_self)
+        self.data_dict['func'] = '-'
+        self.data_dict['arg'].append(other)
+        return self
 
     def __mul__(self, other):
-        if isinstance(other, Indicators):
-            self.data_dict['arg'].append(self)
-            self.data_dict['func'] = '*'
-            self.data_dict['arg'].append(other)
-            return self.data() * other.data()
-        if isinstance(other, int) or isinstance(other, float):
-            return self.data() * other
+        copy_self = copy(self)
+        self.data_dict['arg'].append(copy_self)
+        self.data_dict['func'] = '*'
+        self.data_dict['arg'].append(other)
+        return self
 
     def __truediv__(self, other):
-        if isinstance(other, Indicators):
-            self.data_dict['arg'].append(self)
-            self.data_dict['func'] = '/'
-            self.data_dict['arg'].append(other)
-            return self.data() / other.data()
-        if isinstance(other, int) or isinstance(other, float):
-            return self.data() / other
+        copy_self = copy(self)
+        self.data_dict['arg'].append(copy_self)
+        self.data_dict['func'] = '/'
+        self.data_dict['arg'].append(other)
+        return self
+
+    def __abs__(self):
+        copy_self = copy(self)
+        self.data_dict['arg'].append(copy_self)
+        self.data_dict['func'] = 'abs'
+        return self
+
+    def max(self, *args):
+        copy_self = copy(self)
+        self.data_dict['arg'].append(copy_self)
+        self.data_dict['func'] = 'max'
+        self.data_dict['arg'] += [*args]
+        return self
 
 
 class Open(Indicators):
@@ -269,8 +275,9 @@ class Unit(Indicators):
         return
 
 
-class FuncBase(object):
-    def __init__(self, field):
+class FuncBase(Indicators):
+    def __init__(self, market_event, field):
+        super().__init__(market_event)
         self.data_dict = DataInClassDict()
         self.data_dict['func'] = 'funcname'
         self.data_dict['arg'] = [field]

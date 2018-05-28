@@ -41,17 +41,23 @@ class MyStrategy(Strategy):
         logger.info('close_ref and type of it: {} {}'.format(close_ref, type(close_ref)))
         arg1 = high - low
         logger.info('arg1 and type of it: {} {}'.format(arg1, type(arg1)))
-        arg2 = indicator.Abs([close_ref - high])
+        arg2 = abs(close_ref - high)
         logger.info('arg2 and type of it: {} {}'.format(arg2, type(arg2)))
-        arg3 = indicator.Abs([close_ref - low])
-        tr = indicator.Max([arg1, arg2, arg3])
-        atr = indicator.MovingAverage([tr, 5])
-        money = indicator.Indicators(self.market_event, 'money')
-        unit = indicator.Indicators(self.market_event, 'unit')
-        tc = indicator.IntPart([money * 0.01 / (unit * atr)])
-        mtc = tc * 4  # 4 * tc 不行，__mul__定义问题
-        hh = indicator.MaxHigh([high, 5])
-        ll = indicator.MinLow([low, 5])
+        arg3 = abs(close_ref - low)
+        tr = indicator.Indicators.max(arg1, arg2, arg3)
+        logger.info('tr.data_dict: {}'.format(tr.data_dict))
+        atr = indicator.Indicators.moving_average(tr, 5)
+        logger.info('self.balance: {}'.format(self.balance))
+        logger.info('self.balance[-1]: {}'.format(self.balance[-1]))
+        money = self.balance[-1]
+        logger.info('money: {}'.format(money))
+        unit = self.units
+        xx = unit * atr
+        yy = money * 0.01 / xx
+        tc = indicator.Indicators.int_part(money * 0.01 / unit * atr)
+        mtc = tc * 4
+        hh = indicator.Indicators.max_high(high, 5)
+        ll = indicator.Indicators.min_low(low, 5)
 
 
 

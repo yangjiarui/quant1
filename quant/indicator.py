@@ -155,12 +155,13 @@ class Indicators(IndicatorBase):
     """
     def __init__(self, market_event, field=None, period=None):
         super().__init__(market_event)
+        self.market_event = market_event
         self.fill = market_event.fill
         self.field = field
         self.period = period
         self.data_dict = DataInClassDict()
         self.data_dict['arg'] = []
-        self.data_dict['func'] = []
+        self.data_dict['func'] = None
 
     def data(self):
         if self.field is 'money':
@@ -178,53 +179,143 @@ class Indicators(IndicatorBase):
             data_list = self.get_basic_data(self.period, ohlc=self.field)
             return data_list
 
-    def moving_average(self):
+    def moving_average(self, period):
         # 保存当前的和前一日期的简单移动平均值
-        ma_list = []
-        ma_list.append(self.get_basic_data(self.period + 1, self.field)[:-1])
-        ma_list.append(self.get_basic_data(self.period, self.field))
-        return ma_list
+        # ma_list = []
+        # ma_list.append(self.get_basic_data(self.period + 1, self.field)[:-1])
+        # ma_list.append(self.get_basic_data(self.period, self.field))
+        # return ma_list
+        another = Indicators(self.market_event)
+        another.data_dict['arg'].append(self)
+        another.data_dict['func'] = 'moving_average'
+        another.data_dict['arg'] += [period]
+        return another
 
     def __add__(self, other):
-        copy_self = copy(self)
-        self.data_dict['arg'].append(copy_self)
-        self.data_dict['func'] = '+'
-        self.data_dict['arg'].append(other)
-        return self
+        """类 + other, 类指的是Indicators, 下同"""
+        another = Indicators(self.market_event)
+        another.data_dict['arg'].append(self)
+        another.data_dict['func'] = '+'
+        another.data_dict['arg'].append(other)
+        return another
 
     def __sub__(self, other):
-        copy_self = copy(self)
-        self.data_dict['arg'].append(copy_self)
-        self.data_dict['func'] = '-'
-        self.data_dict['arg'].append(other)
-        return self
+        """类 - other"""
+        another = Indicators(self.market_event)
+        another.data_dict['arg'].append(self)
+        another.data_dict['func'] = '-'
+        another.data_dict['arg'].append(other)
+        return another
 
     def __mul__(self, other):
-        copy_self = copy(self)
-        self.data_dict['arg'].append(copy_self)
-        self.data_dict['func'] = '*'
-        self.data_dict['arg'].append(other)
-        return self
+        """类 × other"""
+        another = Indicators(self.market_event)
+        another.data_dict['arg'].append(self)
+        another.data_dict['func'] = '*'
+        another.data_dict['arg'].append(other)
+        return another
 
     def __truediv__(self, other):
-        copy_self = copy(self)
-        self.data_dict['arg'].append(copy_self)
-        self.data_dict['func'] = '/'
-        self.data_dict['arg'].append(other)
-        return self
+        """类 / other"""
+        another = Indicators(self.market_event)
+        another.data_dict['arg'].append(self)
+        another.data_dict['func'] = '/'
+        another.data_dict['arg'].append(other)
+        return another
+
+    def __radd__(self, other):
+        """other + 类"""
+        another = Indicators(self.market_event)
+        another.data_dict['arg'].append(other)
+        another.data_dict['func'] = '+'
+        another.data_dict['arg'].append(self)
+        return another
+
+    def __rsub__(self, other):
+        """other - 类"""
+        another = Indicators(self.market_event)
+        another.data_dict['arg'].append(other)
+        another.data_dict['func'] = '-'
+        another.data_dict['arg'].append(self)
+        return another
+
+    def __rmul__(self, other):
+        """other × 类"""
+        another = Indicators(self.market_event)
+        another.data_dict['arg'].append(other)
+        another.data_dict['func'] = '*'
+        another.data_dict['arg'].append(self)
+        return another
+
+    def __rtruediv__(self, other):
+        """other / 类"""
+        another = Indicators(self.market_event)
+        another.data_dict['arg'].append(other)
+        another.data_dict['func'] = '/'
+        another.data_dict['arg'].append(self)
+        return another
 
     def __abs__(self):
-        copy_self = copy(self)
-        self.data_dict['arg'].append(copy_self)
-        self.data_dict['func'] = 'abs'
-        return self
+        """abs(类)"""
+        another = Indicators(self.market_event)
+        another.data_dict['arg'].append(self)
+        another.data_dict['func'] = 'abs'
+        return another
 
     def max(self, *args):
-        copy_self = copy(self)
-        self.data_dict['arg'].append(copy_self)
-        self.data_dict['func'] = 'max'
-        self.data_dict['arg'] += [*args]
-        return self
+        """Indicators.max(类, *args)"""
+        another = Indicators(self.market_event)
+        another.data_dict['arg'].append(self)
+        another.data_dict['func'] = 'max'
+        another.data_dict['arg'] += [*args]
+        return another
+
+    def min(self, *args):
+        """Indicators.min(类, *args)"""
+        another = Indicators(self.market_event)
+        another.data_dict['arg'].append(self)
+        another.data_dict['func'] = 'min'
+        another.data_dict['arg'] += [*args]
+        return another
+
+    def int_part(self):
+        """Indicators.int_part(类)"""
+        another = Indicators(self.market_event)
+        another.data_dict['arg'].append(self)
+        another.data_dict['func'] = 'int'
+        return another
+
+    def max_high(self, *args):
+        """Indicators.max_high(类, *args)"""
+        another = Indicators(self.market_event)
+        another.data_dict['arg'].append(self)
+        another.data_dict['func'] = 'max_high'
+        another.data_dict['arg'] += [*args]
+        return another
+
+    def min_low(self, *args):
+        """Indicators.min_low(类, *args)"""
+        another = Indicators(self.market_event)
+        another.data_dict['arg'].append(self)
+        another.data_dict['func'] = 'min_low'
+        another.data_dict['arg'] += [*args]
+        return another
+
+    def cross_up(self, *args):
+        """Indicators.cross_up(类, *args)"""
+        another = Indicators(self.market_event)
+        another.data_dict['arg'].append(self)
+        another.data_dict['func'] = 'cross_up'
+        another.data_dict['arg'] += [*args]
+        return another
+
+    def cross_down(self, *args):
+        """Indicators.cross_down(类, *args)"""
+        another = Indicators(self.market_event)
+        another.data_dict['arg'].append(self)
+        another.data_dict['func'] = 'cross_down'
+        another.data_dict['arg'] += [*args]
+        return another
 
 
 class Open(Indicators):

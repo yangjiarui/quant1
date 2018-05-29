@@ -2,6 +2,7 @@
 import talib
 import numpy as np
 from copy import copy
+from quant.logging_backtest import logger
 
 
 class IndicatorBase(object):
@@ -318,52 +319,21 @@ class Indicators(IndicatorBase):
         return another
 
 
-class Open(Indicators):
-    def __init__(self, market_event, field, period=1):
-        super().__init__(market_event, field, period)
+class Evaluate(object):
+    """判断买入卖出时机时，进行解析"""
+    def __init__(self, unevaluated: Indicators):
+        self.func_list = []
+        self.unevaluated = unevaluated
 
+    def get_func(self):
+        for key, value in self.unevaluated.data_dict.items():
+            if value is 'func':
+                self.func_list.append(value)
 
-class High(Indicators):
-    def __init__(self, market_event, field, period=1):
-        super().__init__(market_event, field, period)
+    def evaluate(self, other: Indicators):
+        if other.data_dict['func'] is None:
+            data = other.data()
 
-
-class Low(Indicators):
-    def __init__(self, market_event, field, period=1):
-        super().__init__(market_event, field, period)
-
-
-class Close(Indicators):
-    def __init__(self, market_event, field, period=1):
-        super().__init__(market_event, field, period)
-
-
-class Money(Indicators):
-    def __init__(self, market_event, field, period=1):
-        super().__init__(market_event, field, period)
-
-    def data(self):
-        if self.field is 'money':
-            data = self.fill.balance[-1]['balance']
-            return data
-
-    def data_list(self):
-        # data_list = self.get_basic_data(self.period, ohlc=self.field)
-        # return data_list
-        return
-
-
-class Unit(Indicators):
-    def __init__(self, market_event, field, period=1):
-        super().__init__(market_event, field, period)
-
-    def data(self):
-        if self.field is 'unit':
-            data = self.fill.units
-            return data
-
-    def data_list(self):
-        return
 
 
 class FuncBase(Indicators):
@@ -447,12 +417,20 @@ class FindMaxPeriod(object):
         for key, value in dic.items():
             if key is 'func':
                 pass
-            if key is 'arg':  # value is list
+            if key is 'arg':  # value 是一个列表
+                # logger.debug('lenth of value: {}'.format(value))
                 for i in value:
+                    logger.debug('i:', i)
                     if isinstance(i, int) or isinstance(i, float):
                         self._period.append(i)
-                    if isinstance(i, dict):
-                        self.find(i)
+                        logger.debug('append: {}'.format(i))
+                        # continue
+                    elif isinstance(i, dict):
+                        self.find(i)  # 只要是字典，一定会返回一个值，否则报错
+                        # continue
+                    else:
+                        self._period.append(0)
+                        logger.debug('else: {}'.format(i))
         return max(self._period)
 
 

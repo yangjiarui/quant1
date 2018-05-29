@@ -63,13 +63,20 @@ e = FindMaxPeriod()
 e.find(atr)
 
 
-# def v2():
-#     print(inspect.stack()[1][3])
+class GetFunc(object):
+    def __init__(self):
+        self.calc_times = []
+        self.period = []
+
+    def get_func(self, dictionary):
+        for key, value in dictionary:
+            if value is 'ma':
+                for i in dictionary['arg']:
+                    if isinstance(i, int):
+                        self.calc_times
 
 
-# def v1():
-#     """返回函数名：v1"""
-#     v2()
-
-
-# v1()
+def get_value(self, dic):
+    if dic['func'] in ['+', '-', '*', '/']:
+        value = dic['arg'][0] + dic['func'] + dic['arg'][1]
+        print(value)

@@ -1,0 +1,7 @@
+[style]
+based_on_style = pep8
+spaces_before_comment = 4
+split_before_logical_operator = true
+column_limit = 119
+coalesce_brackets = true
+dedent_closing_brackets = true

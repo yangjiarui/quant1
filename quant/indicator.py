@@ -1,8 +1,9 @@
 # coding:utf-8
 import talib
 import numpy as np
-from copy import copy
+from copy import copy, deepcopy
 from quant.logging_backtest import logger
+from collections import deque
 
 
 class IndicatorBase(object):
@@ -154,7 +155,7 @@ class Indicators(IndicatorBase):
     bb = B()
     print(aa + bb)  # 1 + 2 = 3, 只能做一次加法，多次加法会出错，如aa + bb + aa
     """
-    def __init__(self, market_event, field=None, period=None):
+    def __init__(self, market_event, field=None, period=1):
         super().__init__(market_event)
         self.market_event = market_event
         self.fill = market_event.fill
@@ -164,7 +165,7 @@ class Indicators(IndicatorBase):
         self.data_dict['arg'] = []
         self.data_dict['func'] = None
 
-    def data(self):
+    def get_real_data(self):
         if self.field is 'money':
             data = self.fill.balance[-1]['balance']
         elif self.field is 'unit':
@@ -173,7 +174,7 @@ class Indicators(IndicatorBase):
             data = self.get_basic_data(self.period, ohlc=self.field)[0]
         return data
 
-    def data_list(self):
+    def get_real_data_list(self):
         if self.field in ['money', 'unit']:
             return
         else:
@@ -323,17 +324,31 @@ class Evaluate(object):
     """判断买入卖出时机时，进行解析"""
     def __init__(self, unevaluated: Indicators):
         self.func_list = []
-        self.unevaluated = unevaluated
+        self.unevaluated = copy(unevaluated)
+        self.data = []  # 暂时存储计算数据
 
     def get_func(self):
         for key, value in self.unevaluated.data_dict.items():
             if value is 'func':
                 self.func_list.append(value)
 
-    def evaluate(self, other: Indicators):
-        if other.data_dict['func'] is None:
-            data = other.data()
-
+    def evaluate(self):
+        while True:
+            value = 'None'
+            if len(self.unevaluated.data_dict['func']):
+                self.func_list.append(self.unevaluated.data_dict['func'])
+                del self.unevaluated.data_dict['func']
+            else:
+                for i in self.unevaluated.data_dict['arg']:
+                    self.data.append(i.get_real_data())
+            if self.func_list[0] in ['+', '-', '*', '/']:
+                if self.data:
+                    data_str = [str(i) for i in self.data]
+                    value = self.func_list[0].join(data_str)
+            value = eval(value)
+            if value:
+                break
+        return value
 
 
 class FuncBase(Indicators):

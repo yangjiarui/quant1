@@ -35,12 +35,17 @@ class MyStrategy(Strategy):
         # if cross.crossdown(close, min_low):
         #     self.sell(trade_lots)
         high = indicator.Indicators(self.market_event, 'high')
+        logger.info('high.data_dict: {}'.format(high.data_dict))
         low = indicator.Indicators(self.market_event, 'low')
         close = indicator.Indicators(self.market_event, 'close')
         close_ref = indicator.Indicators(self.market_event, close, 1)
         logger.info('close_ref and type of it: {} {}'.format(close_ref, type(close_ref)))
         arg1 = high - low
+        value = indicator.Evaluate(arg1)
+        value = value.evaluate()
+        logger.info('value: {}'.format(value))
         logger.info('arg1 and type of it: {} {}'.format(arg1, type(arg1)))
+        logger.info('arg1.data_dict: {}'.format(arg1.data_dict))
         arg2 = abs(close_ref - high)
         logger.info('arg2 and type of it: {} {}'.format(arg2, type(arg2)))
         arg3 = abs(close_ref - low)
@@ -52,8 +57,6 @@ class MyStrategy(Strategy):
         money = self.balance[-1]
         logger.info('money: {}'.format(money))
         unit = self.units
-        xx = unit * atr
-        yy = money * 0.01 / xx
         tc = indicator.Indicators.int_part(money * 0.01 / unit * atr)
         mtc = tc * 4
         hh = indicator.Indicators.max_high(high, 5)

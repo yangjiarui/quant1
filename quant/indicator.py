@@ -324,22 +324,22 @@ class Evaluate(object):
     """判断买入卖出时机时，进行解析"""
     def __init__(self, unevaluated: Indicators):
         self.func_list = []
-        self.unevaluated = copy(unevaluated)
+        self.data_dict = copy(unevaluated.data_dict)
         self.data = []  # 暂时存储计算数据
 
     def get_func(self):
-        for key, value in self.unevaluated.data_dict.items():
+        for key, value in self.data_dict.items():
             if value is 'func':
                 self.func_list.append(value)
 
     def evaluate(self):
         while True:
             value = 'None'
-            if len(self.unevaluated.data_dict['func']):
-                self.func_list.append(self.unevaluated.data_dict['func'])
-                del self.unevaluated.data_dict['func']
+            if len(self.data_dict['func']):
+                self.func_list.append(self.data_dict['func'])
+                del self.data_dict['func']
             else:
-                for i in self.unevaluated.data_dict['arg']:
+                for i in self.data_dict['arg']:
                     self.data.append(i.get_real_data())
             if self.func_list[0] in ['+', '-', '*', '/']:
                 if self.data:

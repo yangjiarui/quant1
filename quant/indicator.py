@@ -55,47 +55,65 @@ class Indicator(IndicatorBase):
             return sma_close[index]
 
     def open(self, period=1):
-        open = self.get_basic_data(period, ohlc='open')[0]
+        open = self.get_basic_data(period, ohlc='open')
         return open
 
     def high(self, period=1):
-        high = self.get_basic_data(period, ohlc='high')[0]
+        high = self.get_basic_data(period, ohlc='high')
         return high
 
     def low(self, period=1):
-        low = self.get_basic_data(period, ohlc='low')[0]
+        low = self.get_basic_data(period, ohlc='low')
         return low
 
     def close(self, period=1):
-        close = self.get_basic_data(period, ohlc='close')[0]
+        close = self.get_basic_data(period, ohlc='close')
         return close
 
-    # def average_true_range(self, period):
-    #     """period个周期内的平均真实波幅，一般称为ATR"""
-    #     high = self.high()
-    #     low = self.low()
-    #     last_open = self.open(2)
-    #     true_range = max(high - low, high - last_open, last_open - low)
-    #     average_true_range = talib.SMA(true_range, period)
-    #     return average_true_range
+    def average_true_range(self, period):
+        """period个周期内的平均真实波幅，一般称为ATR"""
+        high = self.high()[0]
+        low = self.low()[0]
+        last_open = self.open(2)[0]
+        true_range = max(high - low, abs(high - last_open), abs(last_open - low))
+        average_true_range = talib.SMA(true_range, period)
+        return average_true_range
 
-    # def money(self):
-    #     return self.fill.balance[-1]['balance']
+    def money(self):
+        return self.fill.balance[-1]['balance']
 
-    # def units(self):
-    #     return self.fill.units
+    def units(self):
+        return self.fill.units
 
     def position(self):
         return self.fill.position[-1]['position']
 
-    def max_high(self, period):
-        """获取period个周期内的最高价"""
-        high = self.get_basic_data(period, ohlc='high')
+    def max_high(self, period, index=0):
+        """
+        获取period个周期内的最高价，
+        index 为 0 表示 period + 1 日前到当日的最高价，
+        index 为 1 表示 period + 2 日前到昨日的最高价，
+        +2 是因为要与上一个 index 的周期相同，便于比较，
+        用于计算 cross up 和 cross down
+        """
+        if not index:
+            high = self.get_basic_data(period, ohlc='high')
+        if index == 1:
+            high = self.get_basic_data(period + 1, ohlc='high')[:-1]
         return max(high)
 
-    def min_low(self, period):
-        """获取period个周期内的最低价"""
-        low = self.get_basic_data(period, ohlc='low')
+    def min_low(self, period, index=0):
+        """
+        获取period个周期内的最低价，
+        index 为 0 表示 period + 1 日前到当日的最低价，
+        index 为 1 表示 period + 2 日前到昨日的最低价，
+        +2 是因为要与上一个 index 的周期相同，便于比较，
+        用于计算 cross up 和 cross down
+        """
+        if not index:
+            low = self.get_basic_data(period, ohlc='low')
+        if index == 1:
+            low = self.get_basic_data(period + 1, ohlc='low')[-1:]
         return min(low)
 
     def is_last_bk(self):
@@ -166,6 +184,11 @@ class Indicators(IndicatorBase):
         self.data_dict['func'] = None
 
     def get_real_data(self):
+        """
+        根据period获取数据，period为1，获取当天的数据，
+        period为2，获取前一天的数据，以此类推
+        返回一个数
+        """
         if self.field is 'money':
             data = self.fill.balance[-1]['balance']
         elif self.field is 'unit':
@@ -175,6 +198,11 @@ class Indicators(IndicatorBase):
         return data
 
     def get_real_data_list(self):
+        """
+        根据period获取数据，period为1，获取当天的数据，
+        period为2，获取前一天的数据和当天的数据，以此类推
+        返回一个numpy.array
+        """
         if self.field in ['money', 'unit']:
             return
         else:
@@ -351,76 +379,39 @@ class Evaluate(object):
         return value
 
 
-class FuncBase(Indicators):
-    def __init__(self, market_event, field):
-        super().__init__(market_event)
-        self.data_dict = DataInClassDict()
-        self.data_dict['func'] = 'funcname'
-        self.data_dict['arg'] = [field]
+# def moving_average(arg, period=1):
+#     """怎么定义？？？"""
+#     if isinstance(arg, Indicators):
+#         # 保存当前的和前一日期的简单移动平均值
+#         ma_list = []
+#         ma_list.append(arg.get_basic_data(period + 1, arg.field)[:-1])
+#         ma_list.append(arg.get_basic_data(period, arg.field))
 
 
-class Max(FuncBase):
-    def __init__(self, field):
-        super().__init__(field)
-        self.data_dict['func'] = 'max'
+def cross_up(arg1: list, arg2: list):
+    """
+    上穿，两条线交叉，一条线arg1从下往上穿过另一条线arg2
+    注意：arg1[0]中放的是当前的数据，arg1[1]中放的是前一个周期的数据
+    """
+    if len(arg1) == len(arg2) == 2:
+        if arg1[0] > arg2[0] and arg1[1] < arg2[1]:
+            return True
+    else:
+        return False
 
 
-class Min(FuncBase):
-    def __init__(self, field):
-        super().__init__(field)
-        self.data_dict['func'] = 'min'
+def cross_down(arg1: list, arg2: list):
+    """
+    下穿，两条线交叉，一条线arg1从上往下穿过另一条线arg2
+    注意：arg1[0]中放的是当前的数据，arg1[1]中放的是前一个周期的数据
+    """
+    if len(arg1) == len(arg2) == 2:
+        if arg1[0] < arg2[0] and arg1[1] > arg2[1]:
+            return True
+    else:
+        return False
 
 
-class Abs(FuncBase):
-    def __init__(self, field):
-        super().__init__(field)
-        self.data_dict['func'] = 'abs'
-        # self.data_dict['arg'] = field
-
-
-class MovingAverage(FuncBase):
-    def __init__(self, field):
-        super().__init__(field)
-        self.data_dict['func'] = 'moving_average'
-
-
-def moving_average(arg, period=1):
-    """怎么定义？？？"""
-    if isinstance(arg, Indicators):
-        # 保存当前的和前一日期的简单移动平均值
-        ma_list = []
-        ma_list.append(arg.get_basic_data(period + 1, arg.field)[:-1])
-        ma_list.append(arg.get_basic_data(period, arg.field))
-
-
-class IntPart(FuncBase, Indicators):
-    def __init__(self, field):
-        super().__init__(field)
-        self.data_dict['func'] = 'int'
-
-
-class MaxHigh(FuncBase):
-    def __init__(self, field):
-        super().__init__(field)
-        self.data_dict['func'] = 'max_high'
-
-
-class MinLow(FuncBase):
-    def __init__(self, field):
-        super().__init__(field)
-        self.data_dict['func'] = 'min_low'
-
-
-class CrossUp(FuncBase):
-    def __init__(self, field):
-        super().__init__(field)
-        self.data_dict['func'] = 'crossup'
-
-
-class CrossDown(FuncBase):
-    def __init__(self, field):
-        super().__init__(field)
-        self.data_dict['func'] = 'crossdown'
 
 
 class FindMaxPeriod(object):

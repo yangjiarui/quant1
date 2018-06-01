@@ -2,7 +2,7 @@
 from abc import ABC, abstractmethod
 from quant.event import events, SignalEvent
 from quant.indicator import (
-    Indicator, Open, High, Low, Close, MaxHigh, MinLow, Cross, AverageTrueRange)
+    Indicator, )#Open, High, Low, Close, MaxHigh, MinLow)
 from quant.order import BuyOrder, SellOrder, ExitAllOrder
 from quant.logging_backtest import logger
 
@@ -26,8 +26,6 @@ class StrategyBase(ABC):
         self.commission = market_event.fill.commission
         self.cash = market_event.fill.cash
         self.balance = market_event.fill.balance
-        # self.first_open = True
-        # logger.debug('self.position[-1] in buy_even_and_open init: {}'.format(self.position))
 
     def __set_dataseries_instrument(self):
         """确保dataseries对应的instrument为正在交易的品种"""
@@ -41,14 +39,14 @@ class StrategyBase(ABC):
     def __set_indicator(self):
         """设置技术指标"""
         self.indicator = Indicator(self.market_event)
-        self.open = Open(self.market_event)
-        self.high = High(self.market_event)
-        self.low = Low(self.market_event)
-        self.close = Close(self.market_event)
-        self.max_high = MaxHigh(self.market_event)
-        self.min_low = MinLow(self.market_event)
-        self.cross = Cross(self.market_event)
-        self.average_true_range = AverageTrueRange(self.market_event)
+        # self.open = Open(self.market_event)
+        # self.high = High(self.market_event)
+        # self.low = Low(self.market_event)
+        # self.close = Close(self.market_event)
+        # self.max_high = MaxHigh(self.market_event)
+        # self.min_low = MinLow(self.market_event)
+        # self.cross = Cross(self.market_event)
+        # self.average_true_range = AverageTrueRange(self.market_event)
 
 
     def points(self, n):

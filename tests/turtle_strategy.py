@@ -34,33 +34,42 @@ class MyStrategy(Strategy):
         #     self.buy(trade_lots)
         # if cross.crossdown(close, min_low):
         #     self.sell(trade_lots)
-        high = indicator.Indicators(self.market_event, 'high')
-        logger.info('high.data_dict: {}'.format(high.data_dict))
-        low = indicator.Indicators(self.market_event, 'low')
-        close = indicator.Indicators(self.market_event, 'close')
-        close_ref = indicator.Indicators(self.market_event, close, 1)
-        logger.info('close_ref and type of it: {} {}'.format(close_ref, type(close_ref)))
-        arg1 = high - low
-        value = indicator.Evaluate(arg1)
-        value = value.evaluate()
-        logger.info('value: {}'.format(value))
-        logger.info('arg1 and type of it: {} {}'.format(arg1, type(arg1)))
-        logger.info('arg1.data_dict: {}'.format(arg1.data_dict))
-        arg2 = abs(close_ref - high)
-        logger.info('arg2 and type of it: {} {}'.format(arg2, type(arg2)))
-        arg3 = abs(close_ref - low)
-        tr = indicator.Indicators.max(arg1, arg2, arg3)
-        logger.info('tr.data_dict: {}'.format(tr.data_dict))
-        atr = indicator.Indicators.moving_average(tr, 5)
-        logger.info('self.balance: {}'.format(self.balance))
-        logger.info('self.balance[-1]: {}'.format(self.balance[-1]))
-        money = self.balance[-1]
-        logger.info('money: {}'.format(money))
-        unit = self.units
-        tc = indicator.Indicators.int_part(money * 0.01 / unit * atr)
-        mtc = tc * 4
-        hh = indicator.Indicators.max_high(high, 5)
-        ll = indicator.Indicators.min_low(low, 5)
+
+        """后续再考虑变量的问题，先把策略写死，往后进行"""
+        # high = indicator.Indicators(self.market_event, 'high')
+        # logger.info('high.data_dict: {}'.format(high.data_dict))
+        # low = indicator.Indicators(self.market_event, 'low')
+        # close = indicator.Indicators(self.market_event, 'close')
+        # close_ref = indicator.Indicators(self.market_event, close, 1)
+        # logger.info('close_ref and type of it: {} {}'.format(close_ref, type(close_ref)))
+        # arg1 = high - low
+        # value = indicator.Evaluate(arg1)
+        # value = value.evaluate()
+        # logger.info('value: {}'.format(value))
+        # logger.info('arg1 and type of it: {} {}'.format(arg1, type(arg1)))
+        # logger.info('arg1.data_dict: {}'.format(arg1.data_dict))
+        # arg2 = abs(close_ref - high)
+        # logger.info('arg2 and type of it: {} {}'.format(arg2, type(arg2)))
+        # arg3 = abs(close_ref - low)
+        # tr = indicator.Indicators.max(arg1, arg2, arg3)
+        # logger.info('tr.data_dict: {}'.format(tr.data_dict))
+        # atr = indicator.Indicators.moving_average(tr, 5)
+        # logger.info('self.balance: {}'.format(self.balance))
+        # logger.info('self.balance[-1]: {}'.format(self.balance[-1]))
+        # money = self.balance[-1]
+        # logger.info('money: {}'.format(money))
+        # unit = self.units
+        # tc = indicator.Indicators.int_part(money * 0.01 / unit * atr)
+        # mtc = tc * 4
+        # hh = indicator.Indicators.max_high(high, 5)
+        # ll = indicator.Indicators.min_low(low, 5)
+        close = []
+        close[0] = indicator.Indicator(self.market_event).close(1)[0]
+        close[1] = indicator.Indicator(self.market_event).close(2)[0]
+        max_high = []
+        max_high[0] = indicator.Indicator(self.market_event).max_high(20)
+        max_high[1] = indicator.Indicator(self.market_event).max_high(20, 1)
+
 
 
 

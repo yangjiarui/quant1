@@ -32,7 +32,11 @@ class IndicatorBase(object):
         return np.array(data)
 
     def get_basic_data(self, period, ohlc='close'):
-        """获取基础的数据，如open, high, low, close等，最后取得一个列表，长度为period"""
+        """
+        获取基础的数据，如 open, high, low, close 等，
+        最后取得一个列表，长度为period，
+        period为 1 表示当前bar的数据
+        """
         data_list = self.bar_list[-period:]
         data = [i[ohlc] for i in data_list]
         return np.array(data)
@@ -66,7 +70,11 @@ class Indicator(IndicatorBase):
         low = self.get_basic_data(period, ohlc='low')
         return low
 
-    def close(self, period=1):
+    def close(self, period=1) -> list:
+        """
+        close(1)[0] 表示当前周期的close
+        close(2)[0] 表示上一周期的close        
+        """
         close = self.get_basic_data(period, ohlc='close')
         return close
 
@@ -88,13 +96,13 @@ class Indicator(IndicatorBase):
     def position(self):
         return self.fill.position[-1]['position']
 
-    def max_high(self, period, index=0):
+    def max_high(self, period: int , index=0):
         """
-        获取period个周期内的最高价，
-        index 为 0 表示 period + 1 日前到当日的最高价，
-        index 为 1 表示 period + 2 日前到昨日的最高价，
-        +2 是因为要与上一个 index 的周期相同，便于比较，
-        用于计算 cross up 和 cross down
+        获取 period 个周期内的最高价，
+        1 表示当前周期，2 表示上一周期到当前周期，类推，
+        index 为 0 表示 period - 1 日前到当日的最高价，即 period 个周期内的最高价，
+        index 为 1 表示 period 日前到昨日的最高价，也是 period 个周期内的最高价，
+        index 是为比较函数 cross_up 和 cross_down 设置的
         """
         if not index:
             high = self.get_basic_data(period, ohlc='high')
@@ -102,9 +110,9 @@ class Indicator(IndicatorBase):
             high = self.get_basic_data(period + 1, ohlc='high')[:-1]
         return max(high)
 
-    def min_low(self, period, index=0):
+    def min_low(self, period: int, index=0):
         """
-        获取period个周期内的最低价，
+        获取 period 个周期内的最低价，
         index 为 0 表示 period + 1 日前到当日的最低价，
         index 为 1 表示 period + 2 日前到昨日的最低价，
         +2 是因为要与上一个 index 的周期相同，便于比较，
@@ -131,6 +139,26 @@ class Indicator(IndicatorBase):
             return 1
         else:
             return 0
+
+    def cross_up(self, arg1: list, arg2: list) -> True or False:
+        """暂时只比较两个值，理论上有中间多个值都相等再穿越的情况，
+        即一条线从下方与另一条线重合再向上穿越"""
+        if isinstance(arg1, list) and isinstance(arg2, list):
+            if len(arg1) == len(arg2) == 2:
+                if arg1[0] < arg2[0] and arg1[1] > arg2[1]:
+                    return True
+        else:
+            return False
+
+    def cross_down(self, arg1: list, arg2: list) -> True or False:
+        """暂时只比较两个值，理论上有中间多个值都相等再穿越的情况，
+        即一条线从上方与另一条线重合再向下穿越"""
+        if isinstance(arg1, list) and isinstance(arg2, list):
+            if len(arg1) == len(arg2) == 2:
+                if arg1[0] > arg2[0] and arg1[1] < arg2[1]:
+                    return True
+        else:
+            return False
 
 
 class DataInClassDict(dict):

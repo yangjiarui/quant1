@@ -63,12 +63,21 @@ class MyStrategy(Strategy):
         # mtc = tc * 4
         # hh = indicator.Indicators.max_high(high, 5)
         # ll = indicator.Indicators.min_low(low, 5)
+        indi = indicator.Indicator(self.market_event)
         close = []
-        close[0] = indicator.Indicator(self.market_event).close(1)[0]
-        close[1] = indicator.Indicator(self.market_event).close(2)[0]
+        close[0] = indi.close(1)[0]
+        close[1] = indi.close(2)[0]
+        logger.info('close list: {}'.format(close))
         max_high = []
-        max_high[0] = indicator.Indicator(self.market_event).max_high(20)
-        max_high[1] = indicator.Indicator(self.market_event).max_high(20, 1)
+        max_high[0] = indi.max_high(20)
+        max_high[1] = indi.max_high(20, 1)
+        min_low = []
+        min_low[0] = indi.min_low(20)
+        min_low[1] = indi.min_low(20, 1)
+        up = indi.cross_up(close, max_high)
+        logger.info('up上穿: {}'.format(up))
+        down = indi.cross_down(close, max_high)
+        logger.info('down下穿: {}'.format(down))
 
 
 

@@ -10,6 +10,7 @@ class IndicatorBase(object):
     """指标基类"""
 
     def __init__(self, market_event):
+        self.market_event = market_event
         self.preload_bar_list = []
         self.instrument = market_event.instrument
         self.iteration_buffer = market_event.feed.iteration_buffer
@@ -37,7 +38,10 @@ class IndicatorBase(object):
         最后取得一个列表，长度为period，
         period为 1 表示当前bar的数据
         """
+        if len(self.bar_list) < period:
+            raise IndexError
         data_list = self.bar_list[-period:]
+        logger.info('len(data_list): {}'.format(len(data_list)))
         data = [i[ohlc] for i in data_list]
         return np.array(data)
 
@@ -76,27 +80,38 @@ class Indicator(IndicatorBase):
         close(2)[0] 表示上一周期的close        
         """
         close = self.get_basic_data(period, ohlc='close')
+        logger.info('type(close) :{}'.format(type(close)))
+        logger.info('close: {}'.format(close))
+        logger.info('close[0]: {}'.format(close[0]))
         return close
 
-    def average_true_range(self, period):
+    def average_true_range(self, period: int) -> float:
         """period个周期内的平均真实波幅，一般称为ATR"""
-        high = self.high()[0]
-        low = self.low()[0]
-        last_open = self.open(2)[0]
-        true_range = max(high - low, abs(high - last_open), abs(last_open - low))
-        average_true_range = talib.SMA(true_range, period)
-        return average_true_range
+        if not isinstance(period, int):
+            logger.info('period must be int, please input int')
+        high = self.high(period)  # type：numpy.ndarray，可以直接进行列表计算
+        low = self.low(period)  # type：numpy.ndarray
+        last_open = self.open(period + 1)[:-1]  # type：numpy.ndarray
+        high_low = high - low  # type：numpy.ndarray
+        high_last_open = high - last_open
+        last_open_low = last_open - low
+        # true_range = max(high - low, abs(high - last_open), abs(last_open - low))
+        true_range = [max(high_low[i], high_last_open[i], last_open_low[i]) for i in range(period)]
+        average_true_range = talib.SMA(np.array(true_range), period)
+        return average_true_range[-1]
 
     def money(self):
-        return self.fill.balance[-1]['balance']
+        logger.info('self.fill.balance[-1]: {}'.format(self.fill.balance[-1]))
+        logger.info('self.fill.balance[-1]: {}'.format(type(self.fill.balance[-1])))
+        return self.fill.balance[-1]
 
     def units(self):
-        return self.fill.units
+        return self.market_event.units
 
     def position(self):
-        return self.fill.position[-1]['position']
+        return self.fill.position[-1]
 
-    def max_high(self, period: int , index=0):
+    def max_high(self, period: int, index=0):
         """
         获取 period 个周期内的最高价，
         1 表示当前周期，2 表示上一周期到当前周期，类推，
@@ -104,6 +119,11 @@ class Indicator(IndicatorBase):
         index 为 1 表示 period 日前到昨日的最高价，也是 period 个周期内的最高价，
         index 是为比较函数 cross_up 和 cross_down 设置的
         """
+        logger.info('period, index : {} {}'.format(period, index))
+        if index not in [0, 1]:
+            logger.warning('index must be 0 or 1, please choose the right index')
+            logger.info('index set to 0 by default')
+            index = 0
         if not index:
             high = self.get_basic_data(period, ohlc='high')
         if index == 1:
@@ -118,10 +138,14 @@ class Indicator(IndicatorBase):
         +2 是因为要与上一个 index 的周期相同，便于比较，
         用于计算 cross up 和 cross down
         """
+        if index not in [0, 1]:
+            logger.warning('index must be 0 or 1, please choose the right index')
+            logger.info('index set to 0 by default')
+            index = 0
         if not index:
             low = self.get_basic_data(period, ohlc='low')
         if index == 1:
-            low = self.get_basic_data(period + 1, ohlc='low')[-1:]
+            low = self.get_basic_data(period + 1, ohlc='low')[:-1]
         return min(low)
 
     def is_last_bk(self):
@@ -141,22 +165,34 @@ class Indicator(IndicatorBase):
             return 0
 
     def cross_up(self, arg1: list, arg2: list) -> True or False:
-        """暂时只比较两个值，理论上有中间多个值都相等再穿越的情况，
-        即一条线从下方与另一条线重合再向上穿越"""
-        if isinstance(arg1, list) and isinstance(arg2, list):
-            if len(arg1) == len(arg2) == 2:
+        """
+        暂时只比较两个值，理论上有中间多个值都相等再穿越的情况，
+        即一条线从下方与另一条线重合再向上穿越，
+        arg1[0]、arg2[0] 表示前一周期的数据，
+        arg1[1]、arg2[1] 表示当前周期的数据，
+        """
+        if (isinstance(arg1, list) and isinstance(
+                arg2, list) and len(arg1) == len(arg2) == 2):
                 if arg1[0] < arg2[0] and arg1[1] > arg2[1]:
                     return True
+                else:
+                    return False
         else:
             return False
 
     def cross_down(self, arg1: list, arg2: list) -> True or False:
-        """暂时只比较两个值，理论上有中间多个值都相等再穿越的情况，
-        即一条线从上方与另一条线重合再向下穿越"""
-        if isinstance(arg1, list) and isinstance(arg2, list):
-            if len(arg1) == len(arg2) == 2:
+        """
+        暂时只比较两个值，理论上有中间多个值都相等再穿越的情况，
+        即一条线从上方与另一条线重合再向下穿越
+        arg1[0]、arg2[0] 表示前一周期的数据，
+        arg1[1]、arg2[1] 表示当前周期的数据，
+        """
+        if (isinstance(arg1, list) and isinstance(
+                arg2, list) and len(arg1) == len(arg2) == 2):
                 if arg1[0] > arg2[0] and arg1[1] < arg2[1]:
                     return True
+                else:
+                    return False
         else:
             return False
 
@@ -416,28 +452,28 @@ class Evaluate(object):
 #         ma_list.append(arg.get_basic_data(period, arg.field))
 
 
-def cross_up(arg1: list, arg2: list):
-    """
-    上穿，两条线交叉，一条线arg1从下往上穿过另一条线arg2
-    注意：arg1[0]中放的是当前的数据，arg1[1]中放的是前一个周期的数据
-    """
-    if len(arg1) == len(arg2) == 2:
-        if arg1[0] > arg2[0] and arg1[1] < arg2[1]:
-            return True
-    else:
-        return False
-
-
-def cross_down(arg1: list, arg2: list):
-    """
-    下穿，两条线交叉，一条线arg1从上往下穿过另一条线arg2
-    注意：arg1[0]中放的是当前的数据，arg1[1]中放的是前一个周期的数据
-    """
-    if len(arg1) == len(arg2) == 2:
-        if arg1[0] < arg2[0] and arg1[1] > arg2[1]:
-            return True
-    else:
-        return False
+# def cross_up(arg1: list, arg2: list):
+#     """
+#     上穿，两条线交叉，一条线arg1从下往上穿过另一条线arg2
+#     注意：arg1[0]中放的是当前的数据，arg1[1]中放的是前一个周期的数据
+#     """
+#     if len(arg1) == len(arg2) == 2:
+#         if arg1[0] > arg2[0] and arg1[1] < arg2[1]:
+#             return True
+#     else:
+#         return False
+#
+#
+# def cross_down(arg1: list, arg2: list):
+#     """
+#     下穿，两条线交叉，一条线arg1从上往下穿过另一条线arg2
+#     注意：arg1[0]中放的是当前的数据，arg1[1]中放的是前一个周期的数据
+#     """
+#     if len(arg1) == len(arg2) == 2:
+#         if arg1[0] < arg2[0] and arg1[1] > arg2[1]:
+#             return True
+#     else:
+#         return False
 
 
 

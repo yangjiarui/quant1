@@ -63,17 +63,25 @@ class MyStrategy(Strategy):
         # mtc = tc * 4
         # hh = indicator.Indicators.max_high(high, 5)
         # ll = indicator.Indicators.min_low(low, 5)
+
+        #  引用技术指标基类，方便调用各种参数
         indi = indicator.Indicator(self.market_event)
+        money = indi.money()
+        unit = indi.units()
+        atr = indi.average_true_range(4)
+        tc = int(money * 0.01 / (unit * atr))
+        mtc = 4 * tc
+        # 列表中放入数据时，前面周期的数据放前面，当前周期的数据放后面
         close = []
-        close[0] = indi.close(1)[0]
-        close[1] = indi.close(2)[0]
+        close.append(indi.close(2)[0])  # 前一周期的 close
+        close.append(indi.close(1)[0])  # 当前周期的 close
         logger.info('close list: {}'.format(close))
         max_high = []
-        max_high[0] = indi.max_high(20)
-        max_high[1] = indi.max_high(20, 1)
+        max_high.append(indi.max_high(3, 1))
+        max_high.append(indi.max_high(3))
         min_low = []
-        min_low[0] = indi.min_low(20)
-        min_low[1] = indi.min_low(20, 1)
+        min_low.append(indi.min_low(3, 1))
+        min_low.append(indi.min_low(3))
         up = indi.cross_up(close, max_high)
         logger.info('up上穿: {}'.format(up))
         down = indi.cross_down(close, max_high)

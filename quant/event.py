@@ -142,6 +142,16 @@ class EventBase(object):
     def units(self, value):
         self._order.set_units(value)
 
+    @property
+    def bs_price(self) -> list:
+        """buy and sell price list"""
+        return self._order.bs_price
+
+    @bs_price.setter
+    def bs_price(self, value) -> list:
+        return self._order.set_bs_price(value)
+
+
 
 class MarketEvent(object):
     """

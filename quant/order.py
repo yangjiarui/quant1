@@ -226,6 +226,13 @@ class OrderBase(object):
     def trailing_stop(self):
         return self._trailing_stop
 
+    @property
+    def bs_price(self) -> list:
+        return self._bs_price
+
+    def set_bs_price(self, value):
+        self.bs_price.append(value)
+
     def set_status(self, status):
         self._status = status
 
@@ -234,6 +241,9 @@ class OrderBase(object):
 
     def set_per_comm(self, per_comm):
         self._per_comm = per_comm
+
+    def set_units(self, units):
+        self._units = units
 
     # 先设定指令类型，再判断执行（set_order_type -> execute）
     def set_order_type(self, order_type):

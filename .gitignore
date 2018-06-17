@@ -22,3 +22,9 @@ msc
 dump.rdb
 node_modules
 .tox
+*.pyc
+*.idea
+*.log
+*.log.*
+*.html
+*.vscode

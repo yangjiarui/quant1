@@ -18,7 +18,7 @@ class Plotter(PlotBase):
         super().__init__()
 
         self.bar = bar.total_dict
-        self.balance_df = fill.balance.df
+        self.equity_df = fill.equity.df
         self.cash_df = fill.cash.df
         self.position_df = fill.position.df
         self.realized_G_L_df = fill.realized_gain_and_loss.df
@@ -51,11 +51,11 @@ class Plotter(PlotBase):
                 name=position)
 
         p_total = go.Scatter(
-            x=self.balance_df.index,
-            y=self.balance_df.balance,
+            x=self.equity_df.index,
+            y=self.equity_df.equity,
             xaxis='x6',
             yaxis='y6',
-            name='balance')
+            name='equity')
 
         p_cash = go.Scatter(
             x=self.cash_df.index,

@@ -19,9 +19,10 @@ class FillBase(object):
         self.cash = dataseries.CashSeries()  # 现金
         # 平仓盈亏
         self.realized_gain_and_loss = dataseries.RealizedGainAndLossSeries()
+        logger.info('realized_gain_and_loss in init: {}'.format(self.realized_gain_and_loss))
         # 浮动盈亏
         self.unrealized_gain_and_loss = dataseries.UnrealizedGainAndLossSeries()
-        self.balance = dataseries.BalanceSeries()  # 余额
+        self.equity = dataseries.EquitySeries()  # 余额
 
         self._order_list = []
         self._trade_list = []
@@ -40,6 +41,7 @@ class FillBase(object):
         self.commission.set_instrument(instrument)
         self.avg_price.set_instrument(instrument)
         self.realized_gain_and_loss.set_instrument(instrument)
+        logger.info('realized_gain_and_loss in set_dataseries_instrument: {}'.format(self.realized_gain_and_loss.list))
         self.unrealized_gain_and_loss.set_instrument(instrument)
 
     def update_time_index(self, feed_list):
@@ -204,56 +206,56 @@ class BacktestFill(FillBase):
             unrealized_g_l,
             # unrealized_g_l_high,
             # unrealized_g_l_low
-            )
-        logger.info('cur_close fill_event.price in date: {} {} {}'.format(cur_close, fill_event.price, fill_event.date))
-        logger.info('unrealized_g_l in date: {} {}'.format(unrealized_g_l, fill_event.date))
+        )
+        logger.info('cur_close fill_event.price in date in update_unrealized_gain_and_loss: {} {} {}'.format(cur_close, fill_event.price, fill_event.date))
+        logger.info('unrealized_g_l in date in update_unrealized_gain_and_loss: {} {}'.format(unrealized_g_l, fill_event.date))
 
-    def update_balance(self, fill_event):
+    def update_equity(self, fill_event):
         """
         更新资产余额
         """
-        # if self.first_open:
-
-        balance = self.balance[-1]
-        logger.info('balance1 in date: {} {}'.format(balance, fill_event.date))
+        equity = self.equity[-1]
+        logger.info('equity1 in date in update_equity: {} {}'.format(equity, fill_event.date))
+        logger.info('realized_gain_and_loss in update_equity: {}'.format(self.realized_gain_and_loss.list))
         total_re_profit = sum(self.realized_gain_and_loss.list)
+        logger.info('total_re_profit in date in update_equity: {} {}'.format(total_re_profit, fill_event.date))
         logger.info('self.realized_gain_and_loss.list: {}'.format(
             self.realized_gain_and_loss.list))
         total_profit = total_re_profit + self.unrealized_gain_and_loss.total()
+        logger.info('total_profit in date in update_equity: {} {}'.format(total_profit, fill_event.date))
         total_commission = sum(self.commission.list)
+        logger.info('total_commission in date in update_equity: {} {}'.format(total_commission, fill_event.date))
 
-        # balance = np.round(self.initial_cash + total_profit - total_commission, 2)
-        balance = np.round(self.initial_cash + total_re_profit - total_commission, 2)
+        # equity = np.round(self.initial_cash + total_profit - total_commission, 2)
+        equity = np.round(self.initial_cash + total_re_profit - total_commission, 2)
+        logger.info('equity2 in date in update_equity: {} {}'.format(equity, fill_event.date))
 
-        # balance += self.initial_cash - total_commission
+        # equity += self.initial_cash - total_commission
 
-        logger.debug('fill_event.date, balance: {} {}'.format(
-            fill_event.date, balance))
-        logger.info('balance in date: {} {}'.format(balance, fill_event.date))
-        self.balance.add(fill_event.date, balance)
+        self.equity.add(fill_event.date, equity)
 
-        # balance = self.initial_cash + total_profit - total_commission
-        # balance_high = self.initial_cash + total_profit_high - total_commission
-        # balance_low = self.initial_cash + total_profit_low - total_commission
+        # equity = self.initial_cash + total_profit - total_commission
+        # equity_high = self.initial_cash + total_profit_high - total_commission
+        # equity_low = self.initial_cash + total_profit_low - total_commission
 
-        # balance += self.initial_cash - total_commission
-        # balance_high = self.initial_cash + total_profit_high - total_commission
-        # balance_low = self.initial_cash + total_profit_low - total_commission
+        # equity += self.initial_cash - total_commission
+        # equity_high = self.initial_cash + total_profit_high - total_commission
+        # equity_low = self.initial_cash + total_profit_low - total_commission
 
-        # logger.debug('fill_event.date, balance, balance_high, balance_low: {} {} {}'.format(
-        #     fill_event.date, balance, balance_high, balance_low))
-        # logger.info('balance in date: {} {}'.format(balance, fill_event.date))
-        # self.balance.add(fill_event.date, balance, balance_high, balance_low)
+        # logger.debug('fill_event.date, equity, equity_high, equity_low: {} {} {}'.format(
+        #     fill_event.date, equity, equity_high, equity_low))
+        # logger.info('equity in date: {} {}'.format(equity, fill_event.date))
+        # self.equity.add(fill_event.date, equity, equity_high, equity_low)
 
     def update_cash(self, fill_event):
         """
         更新现金，现金 = 资产余额 - 本次已缴纳的保证金
         """
-        cur_balance = self.balance[-1]
+        cur_equity = self.equity[-1]
         # total_margin = self.margin.total()
         margin = self.margin[-1]
-        # cash = cur_balance - total_margin
-        cash = np.round(cur_balance - margin, 2)
+        # cash = cur_equity - total_margin
+        cash = np.round(cur_equity - margin, 2)
         logger.debug('fill_event.date, cash: {} {}'.format(fill_event.date, cash))
         logger.info('cash in date: {} {}'.format(cash, fill_event.date))
         self.cash.add(fill_event.date, cash)
@@ -273,7 +275,7 @@ class BacktestFill(FillBase):
         self.update_margin(fill_event)
         self.update_commission(fill_event)
         self.update_unrealized_gain_and_loss(fill_event)
-        self.update_balance(fill_event)
+        self.update_equity(fill_event)
         self.update_cash(fill_event)
 
         # self.position.del_last()
@@ -281,7 +283,7 @@ class BacktestFill(FillBase):
         # self.commission.del_last()
         # self.avg_price.del_last()
         # self.unrealized_gain_and_loss.del_last()
-        # self.balance.del_last()
+        # self.equity.del_last()
         # self.cash.del_last()
 
     def update_time_index(self, feed_list):
@@ -327,7 +329,7 @@ class BacktestFill(FillBase):
         self.avg_price.add(date, cur_avg)
         cur_position = self.position[-1]
         self.position.add(date, cur_position)
-        logger.info('cur_position, cur_avg in date update_time_index: {} {} {}'.format(cur_position,cur_avg, date))
+        logger.info('cur_position, cur_avg in date update_time_index: {} {} {}'.format(cur_position, cur_avg, date))
         # unrealized_g_l = (price - cur_avg) * cur_position * feed.mult
         unrealized_g_l = np.round((price - cur_avg) * abs(cur_position) * feed.units, 2)
         # unrealized_g_l_high = (high - cur_avg) * cur_position * feed.mult
@@ -344,8 +346,8 @@ class BacktestFill(FillBase):
             # unrealized_g_l_low
             )
 
-        # 更新balance
-        last_balance = self.balance[-1]
+        # 更新equity
+        last_equity = self.equity[-1]
         total_re_profit = sum(self.realized_gain_and_loss.list)
         logger.info('total_re_profit: {}'.format(total_re_profit))
         logger.info('self.realized_gain_and_loss.list: {}'.format(self.realized_gain_and_loss.list))
@@ -357,11 +359,11 @@ class BacktestFill(FillBase):
         logger.info('total_re_profit: {}'.format(total_re_profit))
         logger.info('total_commission:{}'.format(total_commission))
         # 持仓时余额 = 上一次开仓后的余额 + 当日浮动盈亏
-        balance = np.round(last_balance + unrealized_g_l, 2)
-        logger.info('balance in date in update_time_index: {} {}'.format(balance, date))
-        self.balance.add(date, balance)
+        equity = np.round(last_equity + unrealized_g_l, 2)
+        logger.info('equity in date in update_time_index: {} {}'.format(equity, date))
+        self.equity.add(date, equity)
 
-        # # 更新balance
+        # # 更新equity
         # commission = self.commission[-1]
         # total_re_profit = sum(self.realized_gain_and_loss.list)
         # total_profit = total_re_profit + self.unrealized_gain_and_loss.total()
@@ -371,25 +373,25 @@ class BacktestFill(FillBase):
         # total_profit_low = (
         #     total_re_profit + self.unrealized_gain_and_loss.total_low())
 
-        # balance = self.initial_cash + total_profit - commission
-        # balance_high = self.initial_cash + total_profit_high - commission
-        # balance_low = self.initial_cash + total_profit_low - commission
-        # logger.info('balance in date in update_time_index: {} {}'.format(balance, date))
-        # self.balance.add(date, balance, balance_high, balance_low)
+        # equity = self.initial_cash + total_profit - commission
+        # equity_high = self.initial_cash + total_profit_high - commission
+        # equity_low = self.initial_cash + total_profit_low - commission
+        # logger.info('equity in date in update_time_index: {} {}'.format(equity, date))
+        # self.equity.add(date, equity, equity_high, equity_low)
 
         # 更新cash
         # total_margin = self.margin.total()
         logger.info('total_margin in update_time_index: {}'.format(margin))
         if self.position[-1] == 0:
-            cash = self.balance[-1]
+            cash = self.equity[-1]
         else:
-            cash = np.round(self.balance[-1] - margin, 2)
+            cash = np.round(self.equity[-1] - margin, 2)
         logger.info('cash in date in update_time_index: {} {}'.format(cash, date))
         self.cash.add(date, cash)
         logger.info('####################################')
 
         # 检查是否爆仓
-        if self.balance[-1] <= 0 or self.cash[-1] <= 0:
+        if self.equity[-1] <= 0 or self.cash[-1] <= 0:
             for feed in feed_list:
                 feed.continue_backtest = False
             logger.info('警告：策略已造成爆仓！')
@@ -418,12 +420,15 @@ class BacktestFill(FillBase):
             'TAKE_PROFIT_ORDER', 'STOP_LOSS_ORDER', 'TRAILING_STOP_ORDER']
 
         date = fill_event.date
+        lots = fill_event.lots
+        logger.info('lots in _update_trade_list: {}'.format(lots))
 
         def get_re_profit(trade_units):
             re_profit = np.round((f.price - i.price) * trade_units * f.units * i.direction, 2)
+            logger.info('re_profit: {} {} {} {} {} {}'.format(re_profit, f.price, i.price, trade_units, f.units, i. direction))
             self.realized_gain_and_loss.add(f.date, re_profit)
-            logger.debug('self.realized_gain_and_loss in backtestfill: {}'.format(self.realized_gain_and_loss))
-            logger.debug('self.realized_gain_and_loss.date in backtestfill: {}'.format(self.realized_gain_and_loss.date))
+            logger.info('self.realized_gain_and_loss in backtestfill: {}'.format(self.realized_gain_and_loss))
+            logger.info('self.realized_gain_and_loss.date in backtestfill: {}'.format(self.realized_gain_and_loss.date))
             if len(self.realized_gain_and_loss.date) > 1:
                 if self.realized_gain_and_loss.date[-2] is f.date:
                     new_realized_g_l = (
@@ -438,7 +443,7 @@ class BacktestFill(FillBase):
                 if f.order.parent is i:  # 找到父类，删除原空单，计算利润
                     self._trade_list.remove(i)
                     self._completed_list.append((copy(i), copy(f)))
-                    f.units = 0
+                    f.lots = 0
 
         else:
             # 判断情况一，即做多的情况
@@ -446,50 +451,50 @@ class BacktestFill(FillBase):
                 for i in self._trade_list:
                     # 剩余空单且品种相同
                     if f.instrument is i.instrument and i.order_type == 'SELL':
-                        if f.units == 0:
+                        if f.lots == 0:
                             break
-                        if i.units > f.units:  # 空单大于多单，剩余空单
+                        if i.lots > f.lots:  # 空单大于多单，剩余空单
                             index_i = self._trade_list.index(i)
                             self._trade_list.pop(index_i)  # 删除原空单
                             self._completed_list.append((copy(i), copy(f)))
-                            i.units -= f.units  # 修改抵消后剩余的空单
-                            get_re_profit(f.units)  # 用执行交易的部分计算利润
-                            f.units = 0  # 没有多单了，单位设为0
+                            i.lots -= f.lots  # 修改抵消后剩余的空单
+                            get_re_profit(f.lots)  # 用执行交易的部分计算利润
+                            f.lots = 0  # 没有多单了，单位设为0
 
-                            if i.units != 0:
+                            if i.lots != 0:
                                 # 修改后的单子放回原位
                                 self._trade_list.insert(index_i, i)
 
-                        elif i.units <= f.units:  # 空单小于多单，抵消后删除空单
+                        elif i.lots <= f.lots:  # 空单小于多单，抵消后删除空单
                             self._trade_list.remove(i)
                             self._completed_list.append((copy(i), copy(f)))
-                            get_re_profit(i.units)  # 用执行交易的部分计算利润
-                            f.units -= i.units  # 修改多单仓位，若为0，后面会删除
+                            get_re_profit(i.lots)  # 用执行交易的部分计算利润
+                            f.lots -= i.lots  # 修改多单仓位，若为0，后面会删除
 
             # 判断情况二，即做空的情况
             elif f.order_type == 'SELL' and last_position > 0:
                 for i in self._trade_list:
                     # 剩余多单且品种相同
                     if f.instrument is i.instrument and i.order_type == 'BUY':
-                        if f.units == 0:
+                        if f.lots == 0:
                             break
-                        if i.units > f.units:  # 多单大于空单，剩余多单
+                        if i.lots > f.lots:  # 多单大于空单，剩余多单
                             index_i = self._trade_list.index(i)
                             self._trade_list.pop(index_i)  # 删除原多单
                             self._completed_list.append((copy(i), copy(f)))
-                            i.units -= f.units  # 修改抵消后剩余的多单
-                            get_re_profit(f.units)  # 用执行交易的部分计算利润
-                            f.units = 0  # 没有空单了，单位设为0
+                            i.lots -= f.lots  # 修改抵消后剩余的多单
+                            get_re_profit(f.lots)  # 用执行交易的部分计算利润
+                            f.lots = 0  # 没有空单了，单位设为0
 
-                            if i.units != 0:
+                            if i.lots != 0:
                                 # 修改后的单子放回原位
                                 self._trade_list.insert(index_i, i)
 
-                        elif i.units <= f.units:  # 多单小于空单，抵消后删除多单
+                        elif i.lots <= f.lots:  # 多单小于空单，抵消后删除多单
                             self._trade_list.remove(i)
                             self._completed_list.append((copy(i), copy(f)))
-                            get_re_profit(i.units)  # 用执行交易的部分计算利润
-                            f.units -= i.units  # 修改空单仓位，若为0，后面会删除
+                            get_re_profit(i.lots)  # 用执行交易的部分计算利润
+                            f.lots -= i.lots  # 修改空单仓位，若为0，后面会删除
 
     def __to_list(self, fill_event):
         """
@@ -500,7 +505,7 @@ class BacktestFill(FillBase):
 
         else:
             self._update_trade_list(fill_event)
-            if fill_event.units != 0:
+            if fill_event.lots != 0:
                 self._trade_list.append(fill_event)
 
     def run_fill(self, fill_event):

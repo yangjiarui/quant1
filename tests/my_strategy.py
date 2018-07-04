@@ -35,7 +35,7 @@ class MyStrategy(Strategy):
         #     self.realized_gain_and_loss[-1]))
         # logger.debug('self.commission: {}'.format(self.commission))
         logger.debug('self.cash[-1]: {}'.format(self.cash[-1]))
-        logger.debug('self.balance[-1]: {}'.format(self.balance[-1]))
+        logger.debug('self.equity[-1]: {}'.format(self.equity[-1]))
 
     def next(self):
         lots = 1

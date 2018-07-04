@@ -25,7 +25,7 @@ class StrategyBase(ABC):
         self.realized_gain_and_loss = market_event.fill.realized_gain_and_loss
         self.commission = market_event.fill.commission
         self.cash = market_event.fill.cash
-        self.balance = market_event.fill.balance
+        self.equity = market_event.fill.equity
 
     def __set_dataseries_instrument(self):
         """确保dataseries对应的instrument为正在交易的品种"""

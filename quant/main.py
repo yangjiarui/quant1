@@ -80,7 +80,7 @@ class Quant(object):
             self.fill.unrealized_gain_and_loss.initialize(instrument, 0)
             self.fill.realized_gain_and_loss.initialize(instrument, 0)
         self.fill.cash.initialize('all', self.fill.initial_cash)
-        self.fill.balance.initialize('all', self.fill.initial_cash)
+        self.fill.equity.initialize('all', self.fill.initial_cash)
 
         self.__combine_all_feed()
 
@@ -213,16 +213,16 @@ class Quant(object):
 
     def __output_summary(self):
         """输出简略的回测结果"""
-        total = pd.DataFrame(self.fill.balance.dict)
+        total = pd.DataFrame(self.fill.equity.dict)
         total.set_index('date', inplace=True)
         # 计算列中的后一个元素与前一个元素差的百分比
         pct_returns = total.pct_change()
         total /= self.fill.initial_cash
-        max_drawdown, duration = create_drawdowns(total['balance'])
+        max_drawdown, duration = create_drawdowns(total['equity'])
         results = OrderedDict()
-        results['Final_Balance'] = round(self.fill.balance[-1], 3)
+        results['Final_equity'] = round(self.fill.equity[-1], 3)
         total_return = round(
-            results['Final_Balance'] / self.fill.initial_cash - 1, 5)
+            results['Final_equity'] / self.fill.initial_cash - 1, 5)
         results['Total_Return'] = str(total_return * 100) + '%'
         results['Max_Drawdown'] = str(max_drawdown * 100) + '%'
         results['Duration'] = duration
@@ -239,11 +239,12 @@ class Quant(object):
 
     def get_analysis(self, instrument):
         """输出详细的结果分析"""
+        logger.info('-----get_analysis-----')
         ohlc_data = self.feed_list[0].bar.df
-        ohlc_data.set_index('date', inplace=True)
+        ohlc_data.set_index('time', inplace=True)
         ohlc_data.index = pd.DatetimeIndex(ohlc_data.index)
 
-        dbal = self.fill.balance.df
+        dbal = self.fill.equity.df
         start = dbal.index[0]
         end = dbal.index[-1]
         capital = self.fill.initial_cash

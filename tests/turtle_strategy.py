@@ -23,7 +23,7 @@ class MyStrategy(Strategy):
         # # true_range = max(high - low, abs(close.data(1) - high), abs(close.data(1) - low))
         # # average_true_range = talib.SMA(true_range, 20)
         # average_true_range = self.average_true_range.data(5)
-        # money = self.balance[-1]
+        # money = self.equity[-1]
         # units = self.units
         # trade_lots = int(money * 0.01 / (units * average_true_range)) + 1
         # total_trade_lots = 4 * trade_lots
@@ -54,9 +54,9 @@ class MyStrategy(Strategy):
         # tr = indicator.Indicators.max(arg1, arg2, arg3)
         # logger.info('tr.data_dict: {}'.format(tr.data_dict))
         # atr = indicator.Indicators.moving_average(tr, 5)
-        # logger.info('self.balance: {}'.format(self.balance))
-        # logger.info('self.balance[-1]: {}'.format(self.balance[-1]))
-        # money = self.balance[-1]
+        # logger.info('self.equity: {}'.format(self.equity))
+        # logger.info('self.equity[-1]: {}'.format(self.equity[-1]))
+        # money = self.equity[-1]
         # logger.info('money: {}'.format(money))
         # unit = self.units
         # tc = indicator.Indicators.int_part(money * 0.01 / unit * atr)

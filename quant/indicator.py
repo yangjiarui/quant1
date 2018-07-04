@@ -77,7 +77,7 @@ class Indicator(IndicatorBase):
     def close(self, period=1) -> list:
         """
         close(1)[0] 表示当前周期的close
-        close(2)[0] 表示上一周期的close        
+        close(2)[0] 表示上一周期的close
         """
         close = self.get_basic_data(period, ohlc='close')
         logger.info('type(close) :{}'.format(type(close)))
@@ -101,9 +101,9 @@ class Indicator(IndicatorBase):
         return average_true_range[-1]
 
     def money(self):
-        logger.info('self.fill.balance[-1]: {}'.format(self.fill.balance[-1]))
-        logger.info('self.fill.balance[-1]: {}'.format(type(self.fill.balance[-1])))
-        return self.fill.balance[-1]
+        logger.info('self.fill.equity[-1]: {}'.format(self.fill.equity[-1]))
+        logger.info('self.fill.equity[-1]: {}'.format(type(self.fill.equity[-1])))
+        return self.fill.equity[-1]
 
     def units(self):
         return self.market_event.units
@@ -254,7 +254,7 @@ class Indicators(IndicatorBase):
         返回一个数
         """
         if self.field is 'money':
-            data = self.fill.balance[-1]['balance']
+            data = self.fill.equity[-1]['equity']
         elif self.field is 'unit':
             data = self.field.units
         else:

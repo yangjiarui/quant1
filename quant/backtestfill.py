@@ -217,7 +217,8 @@ class BacktestFill(FillBase):
         equity = self.equity[-1]
         logger.info('equity1 in date in update_equity: {} {}'.format(equity, fill_event.date))
         logger.info('realized_gain_and_loss in update_equity: {}'.format(self.realized_gain_and_loss.list))
-        total_re_profit = sum(self.realized_gain_and_loss.list)
+        # total_re_profit = sum(self.realized_gain_and_loss.list)
+        total_re_profit = self.realized_gain_and_loss.list[-1]
         logger.info('total_re_profit in date in update_equity: {} {}'.format(total_re_profit, fill_event.date))
         logger.info('self.realized_gain_and_loss.list: {}'.format(
             self.realized_gain_and_loss.list))
@@ -275,8 +276,8 @@ class BacktestFill(FillBase):
         self.update_margin(fill_event)
         self.update_commission(fill_event)
         self.update_unrealized_gain_and_loss(fill_event)
-        self.update_equity(fill_event)
-        self.update_cash(fill_event)
+        # self.update_equity(fill_event)
+        # self.update_cash(fill_event)
 
         # self.position.del_last()
         # self.margin.del_last()
@@ -330,21 +331,16 @@ class BacktestFill(FillBase):
         cur_position = self.position[-1]
         self.position.add(date, cur_position)
         logger.info('cur_position, cur_avg in date update_time_index: {} {} {}'.format(cur_position, cur_avg, date))
-        # unrealized_g_l = (price - cur_avg) * cur_position * feed.mult
-        unrealized_g_l = np.round((price - cur_avg) * abs(cur_position) * feed.units, 2)
-        # unrealized_g_l_high = (high - cur_avg) * cur_position * feed.mult
-        # unrealized_g_l_low = (low - cur_avg) * cur_position * feed.mult
+        # 浮盈 = （卖出价 - 买入价）× 手数
+        # 若卖出平仓，则原仓位为正，浮盈 = （平仓价（卖出）- 持仓均价）× 原仓位
+        # 若买入平仓，则原仓位为负，浮盈 = （平仓价（买入）- 持仓均价）× 原仓位
+        unrealized_g_l = np.round((price - cur_avg) * cur_position * feed.units, 2)
         if self.avg_price[-1] == 0:
             unrealized_g_l = 0
             # unrealized_g_l = unrealized_g_l_high = unrealized_g_l_low = 0
         logger.info('cur_avg in date in update_time_index: {} {}'.format(cur_avg, date))
         logger.info('unrealized_g_l in date in update_time_index: {} {}'.format(unrealized_g_l, date))
-        self.unrealized_gain_and_loss.add(
-            date,
-            unrealized_g_l,
-            # unrealized_g_l_high,
-            # unrealized_g_l_low
-            )
+        self.unrealized_gain_and_loss.add(date, unrealized_g_l)
 
         # 更新equity
         last_equity = self.equity[-1]
@@ -354,7 +350,7 @@ class BacktestFill(FillBase):
         total_profit = total_re_profit + self.unrealized_gain_and_loss.total()
         logger.info('total_profit in date in update_time_index: {} {}'.format(total_profit, date))
         logger.info('sum(self.commission.list) in date in update_time_index: {} {}'.format(sum(self.commission.list), date))
-        logger.info('self.commission.list in date in update_time_index: {} {}'.format(self.commission.list, date))
+        # logger.info('self.commission.list in date in update_time_index: {} {}'.format(self.commission.list, date))
         total_commission = np.round(sum(self.commission.list), 2)
         logger.info('total_re_profit: {}'.format(total_re_profit))
         logger.info('total_commission:{}'.format(total_commission))
@@ -422,11 +418,13 @@ class BacktestFill(FillBase):
         date = fill_event.date
         lots = fill_event.lots
         logger.info('lots in _update_trade_list: {}'.format(lots))
+        re_profit_list = self.realized_gain_and_loss.re_profit
 
         def get_re_profit(trade_units):
             re_profit = np.round((f.price - i.price) * trade_units * f.units * i.direction, 2)
             logger.info('re_profit: {} {} {} {} {} {}'.format(re_profit, f.price, i.price, trade_units, f.units, i. direction))
-            self.realized_gain_and_loss.add(f.date, re_profit)
+            re_profit_list.append(re_profit)
+            self.realized_gain_and_loss.add(f.date, sum(re_profit_list))
             logger.info('self.realized_gain_and_loss in backtestfill: {}'.format(self.realized_gain_and_loss))
             logger.info('self.realized_gain_and_loss.date in backtestfill: {}'.format(self.realized_gain_and_loss.date))
             if len(self.realized_gain_and_loss.date) > 1:
@@ -513,6 +511,8 @@ class BacktestFill(FillBase):
         self.set_dataseries_instrument(fill_event.instrument)
         self.update_info(fill_event)
         self.__to_list(fill_event)
+        self.update_equity(fill_event)
+        self.update_cash(fill_event)
 
     def check_trade_list(self, feed):
         """

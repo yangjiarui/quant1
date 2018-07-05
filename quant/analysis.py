@@ -46,14 +46,14 @@ def create_drawdowns(equity_curve):
     return round(drawdown.max(), 5), round(duration.max(), 3)
 
 
-def create_trade_log(completed_list, units):
+def create_trade_log(completed_list, lots):
     """
     记录每比交易的明细，包括开仓日期、开仓价格、订单类型、手数、
     平仓日期、平仓价格、执行类型、收益、佣金及总收益等
     """
     trade_log_list = []
-    # logger.debug('completed_list: {}'.format(completed_list))
-    logger.debug('len(completed_list): {}'.format(len(completed_list)))
+    # logger.info('completed_list: {}'.format(completed_list))
+    logger.info('len(completed_list): {}'.format(len(completed_list)))
     for i in completed_list:
         # logger.debug('i[0]: {}'.format(i[0]))
         # logger.debug('i[1]: {}'.format(i[1]))
@@ -63,26 +63,26 @@ def create_trade_log(completed_list, units):
         d['entry_date'] = i[0].date
         d['entry_price'] = i[0].price
         d['order_type'] = i[0].order_type
-        logger.debug('i[0].date in analysis: {}'.format(i[0].date))
-        logger.debug('i[0].price in analysis: {}'.format(i[0].price))
-        logger.debug('i[0].order_type in analysis: {}'.format(i[0].order_type))
-        logger.debug('i[0].units in analysis: {}'.format(i[0].units))
-        logger.debug('i[1].units in analysis: {}'.format(i[1].units))
-        d['units'] = round(min(i[0].units, i[1].units), 3)
+        logger.info('i[0].date in analysis: {}'.format(i[0].date))
+        logger.info('i[0].price in analysis: {}'.format(i[0].price))
+        logger.info('i[0].order_type in analysis: {}'.format(i[0].order_type))
+        logger.info('i[0].lots in analysis: {}'.format(i[0].lots))
+        logger.info('i[1].lots in analysis: {}'.format(i[1].lots))
+        d['lots'] = round(min(i[0].lots, i[1].lots), 3)
         d['exit_date'] = i[1].date
         d['exit_price'] = i[1].price
         d['pl_points'] = i[1].price - i[0].price
         d['execute_type'] = i[1].execute_type
         d['re_profit'] = (
-            (f.price - i[0].price) * d['units'] * units * i[0].direction)
+            (f.price - i[0].price) * d['lots'] * lots * i[0].direction)
 
-        comm = f.per_comm * units
-        d['commission'] = d['units'] * comm * f.price * 2
+        comm = f.per_comm * lots
+        d['commission'] = d['lots'] * comm * f.price * 2
         trade_log_list.append(d)
 
     df = pd.DataFrame(trade_log_list)
     df['cumul_total'] = (df['re_profit'] - df['commission']).cumsum()
-    return df[['entry_date', 'entry_price', 'order_type', 'units', 'exit_date',
+    return df[['entry_date', 'entry_price', 'order_type', 'lots', 'exit_date',
                'exit_price', 'execute_type', 'pl_points', 're_profit',
                'commission', 'cumul_total']]
 
@@ -119,6 +119,7 @@ def ending_equity(dbal):
 
 def total_net_profit(trade_log):
     """净利润"""
+    logger.info('---------trade_log---------: {}'.format(trade_log))
     return trade_log.iloc[-1]['cumul_total']
 
 

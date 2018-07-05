@@ -42,55 +42,57 @@ class Plotter(PlotBase):
                     name=instrument)
                 self.data.append(p_symbol)
 
+        # 调试用
         for position in self.position_df:
             p_position = go.Scatter(
                 x=self.position_df.index,
                 y=self.position_df[position],
                 xaxis='x2',
                 yaxis='y2',
-                name=position)
+                name='仓位')
 
         p_total = go.Scatter(
             x=self.equity_df.index,
             y=self.equity_df.equity,
             xaxis='x6',
             yaxis='y6',
-            name='equity')
+            name='权益')
 
         p_cash = go.Scatter(
             x=self.cash_df.index,
             y=self.cash_df.cash,
             xaxis='x6',
             yaxis='y6',
-            name='cash')
+            name='现金')
 
         p_realized_gain_and_loss = go.Scatter(
             x=self.realized_G_L_df.index,
             y=self.realized_G_L_df.realized_gain_and_loss,
             xaxis='x4',
             yaxis='y4',
-            name='realized_gain_and_loss')
+            name='利润/亏损')
 
         p_unrealized_gain_and_loss = go.Scatter(
             x=self.unrealized_g_l_df.index,
             y=self.unrealized_g_l_df.unrealized_gain_and_loss,
             xaxis='x4',
             yaxis='y4',
-            name='unrealized_gain_and_loss')
+            name='浮动盈亏')
 
-        p_commission = go.Scatter(
-            x=self.commission_df.index,
-            y=self.commission_df.commission,
-            xaxis='x4',
-            yaxis='y4',
-            name='commission')
+        # # 调试用，全是0？？？
+        # p_commission = go.Scatter(
+        #     x=self.commission_df.index,
+        #     y=self.commission_df.commission,
+        #     xaxis='x4',
+        #     yaxis='y4',
+        #     name='手续费')
 
         self.data.append(p_position)
         self.data.append(p_total)
         self.data.append(p_cash)
         self.data.append(p_unrealized_gain_and_loss)
         self.data.append(p_realized_gain_and_loss)
-        self.data.append(p_commission)
+        # self.data.append(p_commission)
 
         layout = go.Layout(
             xaxis2=dict(domain=[0, 1], anchor='y2', scaleanchor='x2', autorange=True),

@@ -227,7 +227,7 @@ class Quant(object):
         results['Max_Drawdown'] = str(max_drawdown * 100) + '%'
         results['Duration'] = duration
         results['Sharpe_Ratio'] = round(create_sharpe_ratio(pct_returns), 3)
-        logger.debug('dict_to_table(results): {}'.format(
+        logger.info('dict_to_table(results): {}'.format(
             dict_to_table(results)))
 
     def get_trade_log(self, instrument):

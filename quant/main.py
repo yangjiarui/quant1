@@ -13,6 +13,9 @@ from quant.dict_to_table import dict_to_table
 from quant.event import events
 from quant.logging_backtest import logger
 from quant import plotter
+from datetime import datetime
+
+date = datetime.now().strftime('%Y-%m-%d-%H-%M')
 
 
 class Quant(object):
@@ -216,42 +219,52 @@ class Quant(object):
         total = pd.DataFrame(self.fill.equity.dict)
         logger.info('-----------self.fill.equity-------------: {}'.format(self.fill.equity))
         logger.info('-------total---------: {}'.format(total))
-        with open('total.txt', 'w') as f:
-            # f.write(str(total))
-            for index, row in total.iterrows():
-                f.write(str(row['date']))
-                f.write(str(','))
-                f.write(str(row['equity']))
-                f.write('\n')
-        total.set_index('date', inplace=True)
+        # with open('total.txt', 'w') as f:
+        #     # f.write(str(total))
+        #     for index, row in total.iterrows():
+        #         f.write(str(row['date']))
+        #         f.write(str(','))
+        #         f.write(str(row['equity']))
+        #         f.write('\n')
+        logger.info('-----------total.index----------: {}'.format(total.index))
+        logger.info('-----------total.columns----------: {}'.format(total.columns))
+        drawdown = create_drawdowns(total)
+        logger.info('----------------drawdown done----------')
         # 计算列中的后一个元素与前一个元素差的百分比
+        total.set_index('date', inplace=True)  # 去掉 date，保留 equity
         pct_returns = total.pct_change()
-
-        max_drawdown_value, duration_for_value = create_drawdowns(total)
+        logger.info('------------pct_change------------')
         total /= self.fill.initial_cash
+        logger.info('-----------total /--------------')
         # max_drawdown_pct, duration_for_pct = create_drawdowns(total['equity'])
         # logger.info('------------max_drawdown, duration----------: {} {}'.format(max_drawdown_pct, duration_for_pct))
-        logger.info('------------max_drawdown, duration----------: {} {}'.format(max_drawdown_value, duration_for_value))
+        # logger.info('------------max_drawdown, duration----------: {} {}'.format(max_drawdown_value, duration_for_value))
         results = OrderedDict()
-        results['Final_equity'] = round(self.fill.equity[-1], 3)
+        # results['测试天数'] = 怎么传递？  # 从测试数据开始到结束的天数
+        # results['测试周期'] =   # 测试数据的 K 线数
+        results['指令总数'] = len(self.fill.completed_list)  # 指令总数
+        results['初始资金'] = self.fill.initial_cash
+        results['最终权益'] = round(self.fill.equity[-1], 3)  # 最终权益
         logger.info('------------results-----------: {}'.format(results))
-        total_return = round(
-            results['Final_equity'] / self.fill.initial_cash - 1, 5)
+        total_return = round(results['最终权益'] / self.fill.initial_cash - 1, 4)
         logger.info('------------total_return-----------: {}'.format(total_return))
-        results['Total_Return'] = str(total_return * 100) + '%'
-        # results['最大回撤比'] = str(max_drawdown_pct * 100) + '%'
-        # results['最大回撤比时间'] = str(duration_for_pct)
-        results['最大回撤'] = str('324')
-        results['Sharpe_Ratio'] = round(create_sharpe_ratio(pct_returns), 3)
-        logger.info('dict_to_table(results): {}'.format(
-            dict_to_table(results)))
+        results['夏普比率'] = round(create_sharpe_ratio(pct_returns), 3)
+        results['盈利率'] = str(round(total_return * 100, 2)) + '%'
+        results['最大回撤'] = drawdown['drawdown'].max()
+        results['最大回撤时间'] = drawdown['date'][drawdown['drawdown'].idxmax()]  # 只能找出一个 index
+        results['最大回撤比'] = drawdown['pct'].max()
+        results['最大回撤比时间'] = drawdown['date'][drawdown['pct'].idxmax()]
+        logger.info('---------results---------: {}'.format(results))
+        results_table = dict_to_table(results)
+        with open(date + '_results.txt', 'w') as f:
+            f.write(results_table)
 
     def get_trade_log(self, instrument):
         """获取交易记录"""
         completed_list = self.fill.completed_list
         for feed in self.feed_list:
             if feed.instrument is instrument:
-                return create_trade_log(completed_list, feed.units)
+                return create_trade_log(completed_list, feed.lots)
 
     def get_analysis(self, instrument):
         """输出详细的结果分析"""
@@ -260,16 +273,18 @@ class Quant(object):
         ohlc_data.set_index('time', inplace=True)
         ohlc_data.index = pd.DatetimeIndex(ohlc_data.index)
 
-        dbal = self.fill.equity.df
-        start = dbal.index[0]
-        end = dbal.index[-1]
-        capital = self.fill.initial_cash
+        dbal = self.fill.equity.df  # 权益
+        start = dbal.index[0]  # 初始权益
+        end = dbal.index[-1]  # 最终权益
+        capital = self.fill.initial_cash  # 初始资金
         trade_log = self.get_trade_log(instrument)
+        logger.info('------trade_log-----: {}'.format(trade_log))
         trade_log = trade_log[trade_log['lots'] != 0]
+        logger.info('------trade_log-----: {}'.format(trade_log))
         trade_log.reset_index(drop=True, inplace=True)
         analysis = stats(ohlc_data, trade_log, dbal, start, end, capital)
-        logger.debug('dict_to_table(analysis): {}'.format(
-            dict_to_table(analysis)))
+        analysis_table = dict_to_table(analysis)
+        logger.info('analysis_table: {}'.format(analysis_table))
 
     def plot(self, instrument, engine='plotly', notebook=False):
         """画图展示"""

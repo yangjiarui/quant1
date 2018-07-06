@@ -28,3 +28,11 @@ node_modules
 *.log.*
 *.html
 *.vscode
+*.pyc
+*.idea
+*.log
+*.log.*
+*.html
+*.vscode
+*.txt
+*.csv

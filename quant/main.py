@@ -214,18 +214,34 @@ class Quant(object):
     def __output_summary(self):
         """输出简略的回测结果"""
         total = pd.DataFrame(self.fill.equity.dict)
+        logger.info('-----------self.fill.equity-------------: {}'.format(self.fill.equity))
+        logger.info('-------total---------: {}'.format(total))
+        with open('total.txt', 'w') as f:
+            # f.write(str(total))
+            for index, row in total.iterrows():
+                f.write(str(row['date']))
+                f.write(str(','))
+                f.write(str(row['equity']))
+                f.write('\n')
         total.set_index('date', inplace=True)
         # 计算列中的后一个元素与前一个元素差的百分比
         pct_returns = total.pct_change()
+
+        max_drawdown_value, duration_for_value = create_drawdowns(total)
         total /= self.fill.initial_cash
-        max_drawdown, duration = create_drawdowns(total['equity'])
+        # max_drawdown_pct, duration_for_pct = create_drawdowns(total['equity'])
+        # logger.info('------------max_drawdown, duration----------: {} {}'.format(max_drawdown_pct, duration_for_pct))
+        logger.info('------------max_drawdown, duration----------: {} {}'.format(max_drawdown_value, duration_for_value))
         results = OrderedDict()
         results['Final_equity'] = round(self.fill.equity[-1], 3)
+        logger.info('------------results-----------: {}'.format(results))
         total_return = round(
             results['Final_equity'] / self.fill.initial_cash - 1, 5)
+        logger.info('------------total_return-----------: {}'.format(total_return))
         results['Total_Return'] = str(total_return * 100) + '%'
-        results['Max_Drawdown'] = str(max_drawdown * 100) + '%'
-        results['Duration'] = duration
+        # results['最大回撤比'] = str(max_drawdown_pct * 100) + '%'
+        # results['最大回撤比时间'] = str(duration_for_pct)
+        results['最大回撤'] = str('324')
         results['Sharpe_Ratio'] = round(create_sharpe_ratio(pct_returns), 3)
         logger.info('dict_to_table(results): {}'.format(
             dict_to_table(results)))

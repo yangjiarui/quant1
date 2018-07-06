@@ -37,46 +37,46 @@ class Plotter(PlotBase):
                 p_symbol = go.Scatter(
                     x=df.index,
                     y=df.close,
-                    xaxis='x3',
-                    yaxis='y3',
+                    xaxis='x2',
+                    yaxis='y2',
                     name=instrument)
                 self.data.append(p_symbol)
 
-        # 调试用
-        for position in self.position_df:
-            p_position = go.Scatter(
-                x=self.position_df.index,
-                y=self.position_df[position],
-                xaxis='x2',
-                yaxis='y2',
-                name='仓位')
+        # # 调试用
+        # for position in self.position_df:
+        #     p_position = go.Scatter(
+        #         x=self.position_df.index,
+        #         y=self.position_df[position],
+        #         xaxis='x2',
+        #         yaxis='y2',
+        #         name='仓位')
 
-        p_total = go.Scatter(
+        p_equity = go.Scatter(
             x=self.equity_df.index,
             y=self.equity_df.equity,
-            xaxis='x6',
-            yaxis='y6',
+            xaxis='x3',
+            yaxis='y3',
             name='权益')
 
         p_cash = go.Scatter(
             x=self.cash_df.index,
             y=self.cash_df.cash,
-            xaxis='x6',
-            yaxis='y6',
+            xaxis='x4',
+            yaxis='y4',
             name='现金')
 
         p_realized_gain_and_loss = go.Scatter(
             x=self.realized_G_L_df.index,
             y=self.realized_G_L_df.realized_gain_and_loss,
-            xaxis='x4',
-            yaxis='y4',
+            xaxis='x5',
+            yaxis='y5',
             name='利润/亏损')
 
         p_unrealized_gain_and_loss = go.Scatter(
             x=self.unrealized_g_l_df.index,
             y=self.unrealized_g_l_df.unrealized_gain_and_loss,
-            xaxis='x4',
-            yaxis='y4',
+            xaxis='x6',
+            yaxis='y6',
             name='浮动盈亏')
 
         # # 调试用，全是0？？？
@@ -87,8 +87,8 @@ class Plotter(PlotBase):
         #     yaxis='y4',
         #     name='手续费')
 
-        self.data.append(p_position)
-        self.data.append(p_total)
+        # self.data.append(p_position)
+        self.data.append(p_equity)
         self.data.append(p_cash)
         self.data.append(p_unrealized_gain_and_loss)
         self.data.append(p_realized_gain_and_loss)
@@ -98,20 +98,22 @@ class Plotter(PlotBase):
             xaxis2=dict(domain=[0, 1], anchor='y2', scaleanchor='x2', autorange=True),
             xaxis3=dict(domain=[0, 1], anchor='y3', scaleanchor='x2', autorange=True),
             xaxis4=dict(domain=[0, 1], anchor='y4', scaleanchor='x2', autorange=True),
+            xaxis5=dict(domain=[0, 1], anchor='y5', scaleanchor='x2', autorange=True),
             xaxis6=dict(domain=[0, 1], anchor='y6', scaleanchor='x2', autorange=True),
-            yaxis2=dict(domain=[0, 0.15], scaleanchor='x2', autorange=True,),
-            yaxis3=dict(domain=[0.15, 0.35], scaleanchor='x2', autorange=True,),
-            yaxis4=dict(domain=[0.35, 0.85], scaleanchor='x2', autorange=True,),
-            yaxis5=dict(
-                domain=[0.15, 0.35],
-                side='right',
-                # range=[0, 10000000],
-                autorange=True,
-                overlaying='y3',
-                tickvals=[0, 1000000, 2000000, 2500000],
-                showgrid=False,
-                scaleanchor='x2'),
-            yaxis6=dict(domain=[0.85, 1], scaleanchor='x2', autorange=True))
+            yaxis2=dict(domain=[0, 0.2], scaleanchor='x2', autorange=True,),
+            yaxis3=dict(domain=[0.2, 0.4], scaleanchor='x2', autorange=True,),
+            yaxis4=dict(domain=[0.4, 0.6], scaleanchor='x2', autorange=True,),
+            # yaxis5=dict(
+            #     domain=[0.15, 0.35],
+            #     side='right',
+            #     # range=[0, 10000000],
+            #     autorange=True,
+            #     overlaying='y3',
+            #     tickvals=[0, 1000000, 2000000, 2500000],
+            #     showgrid=False,
+            #     scaleanchor='x2'),
+            yaxis5=dict(domain=[0.6, 0.8], scaleanchor='x2', autorange=True),
+            yaxis6=dict(domain=[0.8, 1], scaleanchor='x2', autorange=True))
         fig = go.Figure(data=self.data, layout=layout)
         if notebook:
             import plotly

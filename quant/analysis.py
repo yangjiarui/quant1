@@ -3,7 +3,7 @@ import math
 import operator
 from collections import OrderedDict
 from datetime import datetime
-
+from copy import copy
 import numpy as np
 import pandas as pd
 from dateutil.relativedelta import relativedelta
@@ -13,6 +13,9 @@ from .logging_backtest import logger
 TRADING_DAYS_PER_YEAR = 252
 TRADING_DAYS_PER_MONTH = 20
 TRADING_DAYS_PER_WEEK = 5
+# np.set_printoptions(suppress=True)
+# pd.set_option('precision', 4)
+date = datetime.now().strftime('%Y-%m-%d-%H-%M')
 
 
 def create_sharpe_ratio(returns, period=252):
@@ -21,7 +24,9 @@ def create_sharpe_ratio(returns, period=252):
     returns: Pandas Series，代表周期的百分比回报
     period：周期，日线（252），小时线（252*6.5），分钟线（252*6.5*60）
     """
+    logger.info('-----returns-----: {}'.format(returns))
     ratio = np.sqrt(period) * (np.mean(returns)) / np.std(returns)
+    logger.info('-----ratio-----: {} {}'.format(ratio, ratio[0]))
     return ratio[0]
 
 
@@ -29,55 +34,38 @@ def create_drawdowns(equity_curve: pd.DataFrame):
     """
     计算最大回撤、最大回撤比及对应的时间
     计算高水位线（high-water mark)与权益线上的点的差值，其最大值即为最大回撤
-    Parameter: equity_curve, 权益曲线，pandas DataFrame(index=['date'], columns=['equity'])
-    Return：最大回撤、最大回撤时间、最大回撤比和最大回撤比时间，float、date
+    Parameter: equity_curve, 权益曲线，pandas DataFrame(
+                index=RangeIndex(start=0, stop=xxx, step=1), columns=['date', 'equity'])
+    Return：drawdown, pd.DataFrame(columns=['date', 'equity', 'hwm', 'drawdown', 'pct'])
     """
+    # logger.info('------------equity_curve-------------: {}'.format(equity_curve))
     # 去掉自动编号的index
-    logger.info('------------equity_curve-------------: {}'.format(equity_curve))
     # equity_curve.reset_index(drop=True, inplace=True)
-    hwm = OrderedDict({'date': [None], 'equity': [0]})  # 权益值的高水位线
     eq_idx = equity_curve.index  # RangeIndex(start=0, stop=1199, step=1)
     logger.info('---------eq_idx---------: {}'.format(eq_idx))
-    drawdown = OrderedDict({'date': [None], 'equity': [0]})  # 最大权益回撤值
-    drawdown_pct = OrderedDict({'date': [None], 'equity': [0]})  # 最大权益回撤比
-    duration = OrderedDict({'date': [None], 'equity': [0]})
-
-    for t in range(0, len(eq_idx) - 1):
-        # logger.info('----------hwm[t - 1], equity_curve[t]---------: {} {}'.format(hwm[t - 1], equity_curve[t]))
-        # with open('hwm.txt', 'a') as f:
-        #     f.write(str(hwm[t - 1]))
-        #     f.write('\n')
-        # with open('equity_curve.txt', 'a') as f:
-        #     f.write(str(equity_curve[t]))
-        #     f.write('\n')
-        # cur_hwm = max(list(hwm['equity'])[-1], equity_curve['equity'][t])
-        # logger.info('--------equity_curve.columns----: {}'.format(equity_curve.columns))
-        # logger.info('--------equity_curve.index[t]----: {}'.format(equity_curve.index[t]))
-        # logger.info('--------hwm["date"]-----: {}'.format(hwm["date"][t]))
+    drawdown = pd.DataFrame(index=eq_idx, columns=['date', 'equity', 'drawdown', 'pct'])
+    hwm = pd.Series(index=eq_idx, name='hwm')
+    drawdown['date'] = equity_curve['date']
+    drawdown['equity'] = equity_curve['equity']
+    # 注意，要更改值，需先生成好数组再插入到 DataFrame 中，而不是直接更改 DataFrame 中的值
+    hwm[0] = equity_curve['equity'][0]
+    for t in range(1, len(eq_idx)):
         # 更改高水位线
-        cur_hwm = list(hwm['equity'])[-1]
-        logger.info('----------equity_curve["equity"][t]--------: {}'.format(equity_curve['equity'][t]))
-        logger.info('----cur_hwm---: {}'.format(cur_hwm))
-        if equity_curve['equity'][t] > cur_hwm:
-            hwm['date'].append(equity_curve.index[t])
-            hwm['equity'].append(equity_curve['equity'][t])
-        # 最大回撤值
-        drawdown_value = cur_hwm - equity_curve['equity'][t]
-        drawdown['date'].append(equity_curve.index[t])
-        drawdown['equity'].append(drawdown_value)
-        # 最大回撤比
-        if drawdown_value > 0:
-            logger.info('----------drawdown_value----------: {}'.format(drawdown_value))
-            cur_hwm_pct = drawdown_value / cur_hwm
-            logger.info('----------cur_hwm_pct---------: {}'.format(cur_hwm_pct))
-            drawdown_pct['date'].append(equity_curve.index[t])
-            drawdown_pct['equity'].append(cur_hwm_pct)
-        # duration[t] = 0 if drawdown[t] == 0 else duration[t - 1] + 1
-    logger.info('------------hwm----------: {}'.format(hwm))
-    logger.info('------------hwm_pct----------: {}'.format(drawdown_pct))
-    logger.info('--------drawdown_value-----: {}'.format(drawdown['equity']))
-    logger.info('--------drawdown_pct_value-----: {}'.format(max(drawdown_pct['equity'])))
-    return round(drawdown.max(), 5), round(drawdown.max(), 3)
+        cur_hwm = max(drawdown['equity'][t], hwm[t - 1])
+        hwm[t] = cur_hwm
+
+    drawdown.insert(2, 'hwm', hwm)  # 插入高水位线
+    drawdown['drawdown'] = (drawdown['hwm'] - drawdown['equity']).round(2)  # 计算回撤值，保留2位小数
+    # logger.info('-------drawdown-----: {} {}'.format(type(drawdown), drawdown))
+    # logger.info('-------drawdown-----: {}'.format(type(drawdown['drawdown']), drawdown['drawdown']))
+    drawdown['pct'] = (drawdown['drawdown'] / drawdown['hwm']).round(4)  # 计算回撤比，保留4位小数
+    # logger.info('-------drawdown-----: {} {}'.format(type(drawdown), drawdown))
+    # with open('drawdown.txt', 'w') as f:
+    #     f.write(str(copy(drawdown)))
+    drawdown.to_csv(date + '_drawdown.csv', index=False)
+    # logger.info('--------tpye of drawdown------: {}'.format(type(drawdown)))
+    # logger.info('--------max_drawdown----------: {}'.format(drawdown['drawdown'].max()))
+    return drawdown
 
 
 def create_trade_log(completed_list, lots):
@@ -97,11 +85,11 @@ def create_trade_log(completed_list, lots):
         d['entry_date'] = i[0].date
         d['entry_price'] = i[0].price
         d['order_type'] = i[0].order_type
-        logger.info('i[0].date in analysis: {}'.format(i[0].date))
-        logger.info('i[0].price in analysis: {}'.format(i[0].price))
-        logger.info('i[0].order_type in analysis: {}'.format(i[0].order_type))
-        logger.info('i[0].lots in analysis: {}'.format(i[0].lots))
-        logger.info('i[1].lots in analysis: {}'.format(i[1].lots))
+        # logger.info('i[0].date in analysis: {}'.format(i[0].date))
+        # logger.info('i[0].price in analysis: {}'.format(i[0].price))
+        # logger.info('i[0].order_type in analysis: {}'.format(i[0].order_type))
+        # logger.info('i[0].lots in analysis: {}'.format(i[0].lots))
+        # logger.info('i[1].lots in analysis: {}'.format(i[1].lots))
         d['lots'] = round(min(i[0].lots, i[1].lots), 3)
         d['exit_date'] = i[1].date
         d['exit_price'] = i[1].price

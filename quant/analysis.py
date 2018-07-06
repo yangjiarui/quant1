@@ -25,25 +25,59 @@ def create_sharpe_ratio(returns, period=252):
     return ratio[0]
 
 
-def create_drawdowns(equity_curve):
+def create_drawdowns(equity_curve: pd.DataFrame):
     """
-    计算最大回撤
+    计算最大回撤、最大回撤比及对应的时间
     计算高水位线（high-water mark)与权益线上的点的差值，其最大值即为最大回撤
-    equity_curve：权益曲线，pandas series
-    Return：最大回撤和持续时间，float
+    Parameter: equity_curve, 权益曲线，pandas DataFrame(index=['date'], columns=['equity'])
+    Return：最大回撤、最大回撤时间、最大回撤比和最大回撤比时间，float、date
     """
-    equity_curve.reset_index(drop=True, inplace=True)
-    hwm = [0]
-    eq_idx = equity_curve.index
-    drawdown = pd.Series(index=eq_idx)
-    duration = pd.Series(index=eq_idx)
+    # 去掉自动编号的index
+    logger.info('------------equity_curve-------------: {}'.format(equity_curve))
+    # equity_curve.reset_index(drop=True, inplace=True)
+    hwm = OrderedDict({'date': [None], 'equity': [0]})  # 权益值的高水位线
+    eq_idx = equity_curve.index  # RangeIndex(start=0, stop=1199, step=1)
+    logger.info('---------eq_idx---------: {}'.format(eq_idx))
+    drawdown = OrderedDict({'date': [None], 'equity': [0]})  # 最大权益回撤值
+    drawdown_pct = OrderedDict({'date': [None], 'equity': [0]})  # 最大权益回撤比
+    duration = OrderedDict({'date': [None], 'equity': [0]})
 
-    for t in range(1, len(eq_idx)):
-        cur_hwm = max(hwm[t - 1], equity_curve[t])
-        hwm.append(cur_hwm)
-        drawdown[t] = hwm[t] - equity_curve[t]
-        duration[t] = 0 if drawdown[t] == 0 else duration[t - 1] + 1
-    return round(drawdown.max(), 5), round(duration.max(), 3)
+    for t in range(0, len(eq_idx) - 1):
+        # logger.info('----------hwm[t - 1], equity_curve[t]---------: {} {}'.format(hwm[t - 1], equity_curve[t]))
+        # with open('hwm.txt', 'a') as f:
+        #     f.write(str(hwm[t - 1]))
+        #     f.write('\n')
+        # with open('equity_curve.txt', 'a') as f:
+        #     f.write(str(equity_curve[t]))
+        #     f.write('\n')
+        # cur_hwm = max(list(hwm['equity'])[-1], equity_curve['equity'][t])
+        # logger.info('--------equity_curve.columns----: {}'.format(equity_curve.columns))
+        # logger.info('--------equity_curve.index[t]----: {}'.format(equity_curve.index[t]))
+        # logger.info('--------hwm["date"]-----: {}'.format(hwm["date"][t]))
+        # 更改高水位线
+        cur_hwm = list(hwm['equity'])[-1]
+        logger.info('----------equity_curve["equity"][t]--------: {}'.format(equity_curve['equity'][t]))
+        logger.info('----cur_hwm---: {}'.format(cur_hwm))
+        if equity_curve['equity'][t] > cur_hwm:
+            hwm['date'].append(equity_curve.index[t])
+            hwm['equity'].append(equity_curve['equity'][t])
+        # 最大回撤值
+        drawdown_value = cur_hwm - equity_curve['equity'][t]
+        drawdown['date'].append(equity_curve.index[t])
+        drawdown['equity'].append(drawdown_value)
+        # 最大回撤比
+        if drawdown_value > 0:
+            logger.info('----------drawdown_value----------: {}'.format(drawdown_value))
+            cur_hwm_pct = drawdown_value / cur_hwm
+            logger.info('----------cur_hwm_pct---------: {}'.format(cur_hwm_pct))
+            drawdown_pct['date'].append(equity_curve.index[t])
+            drawdown_pct['equity'].append(cur_hwm_pct)
+        # duration[t] = 0 if drawdown[t] == 0 else duration[t - 1] + 1
+    logger.info('------------hwm----------: {}'.format(hwm))
+    logger.info('------------hwm_pct----------: {}'.format(drawdown_pct))
+    logger.info('--------drawdown_value-----: {}'.format(drawdown['equity']))
+    logger.info('--------drawdown_pct_value-----: {}'.format(max(drawdown_pct['equity'])))
+    return round(drawdown.max(), 5), round(drawdown.max(), 3)
 
 
 def create_trade_log(completed_list, lots):

@@ -1,8 +1,7 @@
 # coding:utf-8
 from abc import ABC, abstractmethod
 from quant.event import events, SignalEvent
-from quant.indicator import (
-    Indicator, )#Open, High, Low, Close, MaxHigh, MinLow)
+from quant.indicator import Indicator  # Open, High, Low, Close, MaxHigh, MinLow
 from quant.order import BuyOrder, SellOrder, ExitAllOrder
 from quant.logging_backtest import logger
 
@@ -47,7 +46,6 @@ class StrategyBase(ABC):
         # self.min_low = MinLow(self.market_event)
         # self.cross = Cross(self.market_event)
         # self.average_true_range = AverageTrueRange(self.market_event)
-
 
     def points(self, n):
         """

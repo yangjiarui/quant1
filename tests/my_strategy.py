@@ -35,7 +35,7 @@ class MyStrategy(Strategy):
         #     self.realized_gain_and_loss[-1]))
         # logger.debug('self.commission: {}'.format(self.commission))
         logger.debug('self.cash[-1]: {}'.format(self.cash[-1]))
-        logger.debug('self.balance[-1]: {}'.format(self.balance[-1]))
+        logger.debug('self.equity[-1]: {}'.format(self.equity[-1]))
 
     def next(self):
         lots = 1
@@ -45,24 +45,24 @@ class MyStrategy(Strategy):
         ma10 = self.indicator.SMA(period=10, index=-1)
         logger.info('ma5: {}'.format(ma5))
         logger.info('ma10: {}'.format(ma10))
-        high = self.indicator.high()
-        low = self.indicator.low()
-        last_open = self.indicator.open(2)  # 前n个周期的值，代入n
-        average_true_range = self.indicator.average_true_range(20)
-        logger.info('average_true_range: {}'.format(average_true_range))
+        # high = self.indicator.high()
+        # low = self.indicator.low()
+        # last_open = self.indicator.open(2)  # 前n个周期的值，代入n
+        # average_true_range = self.indicator.average_true_range(20)
+        # logger.info('average_true_range: {}'.format(average_true_range))
         if ma5 > ma10:
-            self.buy_even_and_open(lots)
-            # self.buy(2)
-            open = self.indicator.open()
-            last_open = self.indicator.open(2)
-            logger.info('open in my_strategy: {}'.format(open))
-            logger.info('last_open in my_strategy: {}'.format(last_open))
+            # self.buy_even_and_open(lots)
+            self.buy(lots)
+            # open = self.indicator.open()
+            # last_open = self.indicator.open(2)
+            # logger.info('open in my_strategy: {}'.format(open))
+            # logger.info('last_open in my_strategy: {}'.format(last_open))
             # self.sell(2)
         elif ma5 < ma10:
-            self.sell_even_and_open(lots)
-            # self.sell(2)
-            close = self.indicator.close()
-            logger.info('close in my_strategy: {}'.format(close))
+            # self.sell_even_and_open(lots)
+            self.sell(lots)
+            # close = self.indicator.close()
+            # logger.info('close in my_strategy: {}'.format(close))
             # self.buy(2)
         # ma5_last
 
@@ -74,7 +74,7 @@ data = CSV(
     # datapath='/home/demlution/桌面/quant/data/IF_cleaned_data.csv',
     instrument='IF',
     startdate='2013-01-04',
-    enddate='2017-12-11')
+    enddate='2013-12-11')
 data_list = [data]
 portfolio = Portfolio
 strategy = MyStrategy
@@ -86,3 +86,4 @@ trade.set_notify()
 trade.run()
 logger.debug(trade.get_trade_log('IF'))
 trade.plot(instrument='IF')
+trade.get_analysis(instrument='IF')

@@ -28,7 +28,7 @@ class DataSeriesBase(object):
         self._instrument = instrument
 
     def add(self, date, value):
-        logger.info('self.old_date, date in add dataseries: {} {}'.format(self.old_date, date))
+        logger.debug('self.old_date, date in add dataseries: {} {}'.format(self.old_date, date))
         if self.old_date != date:
             if self._dict[self._instrument][0]['date'] == 'start':
                 self._dict[self._instrument] = []
@@ -36,9 +36,9 @@ class DataSeriesBase(object):
             # logger.debug('self._dict in dataseries: {}'.format(self._dict))
             self.old_date = date
         else:
-            logger.info('self.old_date, date in add dataseries: {} {}'.format(self.old_date, date))
-            logger.info('date in dataseries.add: {}'.format(date))
-            logger.info('value in add: {}'.format(value))
+            logger.debug('self.old_date, date in add dataseries: {} {}'.format(self.old_date, date))
+            logger.debug('date in dataseries.add: {}'.format(date))
+            logger.debug('value in add: {}'.format(value))
             self._dict[self._instrument][-1][self._name] = value
 
     @property
@@ -58,7 +58,7 @@ class DataSeriesBase(object):
         return [i[self._name] for i in self._dict[self._instrument]]
 
     @property
-    def df(self):  # 转换数据为DataFrame格式, 此处待测试
+    def df(self):  # 转换数据为DataFrame格式
         df = pd.DataFrame(self._dict[self._instrument][1:])
         df.set_index('date', inplace=True)
         df.index = pd.DatetimeIndex(df.index)
@@ -126,7 +126,7 @@ class CashSeries(DataSeriesBase):
 class RealizedGainAndLossSeries(DataSeriesBase):
     """平仓盈亏，即已获得的盈亏"""
     _name = 'realized_gain_and_loss'
-
+    re_profit = []
     # def update_cur(self, realized_gain_and_loss):
     #     self._dict[self._instrument][-1][
     #         'realized_gain_and_loss'] = realized_gain_and_loss
@@ -174,9 +174,9 @@ class UnrealizedGainAndLossSeries(DataSeriesBase):
     #     return self.total(key, 'unrealized_gain_and_loss_low')
 
 
-class BalanceSeries(DataSeriesBase):
+class EquitySeries(DataSeriesBase):
     """余额"""
-    _name = 'balance'
+    _name = 'equity'
     _instrument = 'all'
 
     # def initialize(self, instrument, initial):
@@ -185,32 +185,32 @@ class BalanceSeries(DataSeriesBase):
     #         self._name: initial,
     #     }]
     #
-    # def add(self, date, balance):
+    # def add(self, date, equity):
     #     self._dict[self._instrument].append({
     #         'date': date,
-    #         self._name: balance,
+    #         self._name: equity,
     #     })
 
     # def initialize(self, instrument, initial):
     #     self._dict[self._instrument] = [{
     #         'date': 'start',
     #         self._name: initial,
-    #         'balance_high': initial,
-    #         'balance_low': initial,
+    #         'equity_high': initial,
+    #         'equity_low': initial,
     #     }]
 
-    # def add(self, date, balance, balance_high, balance_low):
+    # def add(self, date, equity, equity_high, equity_low):
     #     self._dict[self._instrument].append({
     #         'date': date,
-    #         self._name: balance,
-    #         'balance_high': balance_high,
-    #         'balance_low': balance_low,
+    #         self._name: equity,
+    #         'equity_high': equity_high,
+    #         'equity_low': equity_low,
     #     })
 
     # @property
     # def high(self):
-    #     return [i['balance_high'] for i in self._dict[self._instrument]]
+    #     return [i['equity_high'] for i in self._dict[self._instrument]]
 
     # @property
     # def low(self):
-    #     return [i['balance_low'] for i in self._dict[self._instrument]]
+    #     return [i['equity_low'] for i in self._dict[self._instrument]]

@@ -3,7 +3,7 @@ import math
 import operator
 from collections import OrderedDict
 from datetime import datetime
-
+from copy import copy
 import numpy as np
 import pandas as pd
 from dateutil.relativedelta import relativedelta
@@ -13,6 +13,9 @@ from .logging_backtest import logger
 TRADING_DAYS_PER_YEAR = 252
 TRADING_DAYS_PER_MONTH = 20
 TRADING_DAYS_PER_WEEK = 5
+# np.set_printoptions(suppress=True)
+# pd.set_option('precision', 4)
+date = datetime.now().strftime('%Y-%m-%d-%H-%M')
 
 
 def create_sharpe_ratio(returns, period=252):
@@ -21,39 +24,58 @@ def create_sharpe_ratio(returns, period=252):
     returns: Pandas Series，代表周期的百分比回报
     period：周期，日线（252），小时线（252*6.5），分钟线（252*6.5*60）
     """
+    logger.info('-----returns-----: {}'.format(returns))
     ratio = np.sqrt(period) * (np.mean(returns)) / np.std(returns)
+    logger.info('-----ratio-----: {} {}'.format(ratio, ratio[0]))
     return ratio[0]
 
 
-def create_drawdowns(equity_curve):
+def create_drawdowns(equity_curve: pd.DataFrame):
     """
-    计算最大回撤
+    计算最大回撤、最大回撤比及对应的时间
     计算高水位线（high-water mark)与权益线上的点的差值，其最大值即为最大回撤
-    equity_curve：权益曲线，pandas series
-    Return：最大回撤和持续时间，float
+    Parameter: equity_curve, 权益曲线，pandas DataFrame(
+                index=RangeIndex(start=0, stop=xxx, step=1), columns=['date', 'equity'])
+    Return：drawdown, pd.DataFrame(columns=['date', 'equity', 'hwm', 'drawdown', 'pct'])
     """
-    equity_curve.reset_index(drop=True, inplace=True)
-    hwm = [0]
-    eq_idx = equity_curve.index
-    drawdown = pd.Series(index=eq_idx)
-    duration = pd.Series(index=eq_idx)
-
+    # logger.info('------------equity_curve-------------: {}'.format(equity_curve))
+    # 去掉自动编号的index
+    # equity_curve.reset_index(drop=True, inplace=True)
+    eq_idx = equity_curve.index  # RangeIndex(start=0, stop=1199, step=1)
+    logger.info('---------eq_idx---------: {}'.format(eq_idx))
+    drawdown = pd.DataFrame(index=eq_idx, columns=['date', 'equity', 'drawdown', 'pct'])
+    hwm = pd.Series(index=eq_idx, name='hwm')
+    drawdown['date'] = equity_curve['date']
+    drawdown['equity'] = equity_curve['equity']
+    # 注意，要更改值，需先生成好数组再插入到 DataFrame 中，而不是直接更改 DataFrame 中的值
+    hwm[0] = equity_curve['equity'][0]
     for t in range(1, len(eq_idx)):
-        cur_hwm = max(hwm[t - 1], equity_curve[t])
-        hwm.append(cur_hwm)
-        drawdown[t] = hwm[t] - equity_curve[t]
-        duration[t] = 0 if drawdown[t] == 0 else duration[t - 1] + 1
-    return round(drawdown.max(), 5), round(duration.max(), 3)
+        # 更改高水位线
+        cur_hwm = max(drawdown['equity'][t], hwm[t - 1])
+        hwm[t] = cur_hwm
+
+    drawdown.insert(2, 'hwm', hwm)  # 插入高水位线
+    drawdown['drawdown'] = (drawdown['hwm'] - drawdown['equity']).round(2)  # 计算回撤值，保留2位小数
+    # logger.info('-------drawdown-----: {} {}'.format(type(drawdown), drawdown))
+    # logger.info('-------drawdown-----: {}'.format(type(drawdown['drawdown']), drawdown['drawdown']))
+    drawdown['pct'] = (drawdown['drawdown'] / drawdown['hwm']).round(4)  # 计算回撤比，保留4位小数
+    # logger.info('-------drawdown-----: {} {}'.format(type(drawdown), drawdown))
+    # with open('drawdown.txt', 'w') as f:
+    #     f.write(str(copy(drawdown)))
+    drawdown.to_csv(date + '_drawdown.csv', index=False)
+    # logger.info('--------tpye of drawdown------: {}'.format(type(drawdown)))
+    # logger.info('--------max_drawdown----------: {}'.format(drawdown['drawdown'].max()))
+    return drawdown
 
 
-def create_trade_log(completed_list, units):
+def create_trade_log(completed_list, lots):
     """
     记录每比交易的明细，包括开仓日期、开仓价格、订单类型、手数、
     平仓日期、平仓价格、执行类型、收益、佣金及总收益等
     """
     trade_log_list = []
-    # logger.debug('completed_list: {}'.format(completed_list))
-    logger.debug('len(completed_list): {}'.format(len(completed_list)))
+    # logger.info('completed_list: {}'.format(completed_list))
+    logger.info('len(completed_list): {}'.format(len(completed_list)))
     for i in completed_list:
         # logger.debug('i[0]: {}'.format(i[0]))
         # logger.debug('i[1]: {}'.format(i[1]))
@@ -63,26 +85,26 @@ def create_trade_log(completed_list, units):
         d['entry_date'] = i[0].date
         d['entry_price'] = i[0].price
         d['order_type'] = i[0].order_type
-        logger.debug('i[0].date in analysis: {}'.format(i[0].date))
-        logger.debug('i[0].price in analysis: {}'.format(i[0].price))
-        logger.debug('i[0].order_type in analysis: {}'.format(i[0].order_type))
-        logger.debug('i[0].units in analysis: {}'.format(i[0].units))
-        logger.debug('i[1].units in analysis: {}'.format(i[1].units))
-        d['units'] = round(min(i[0].units, i[1].units), 3)
+        # logger.info('i[0].date in analysis: {}'.format(i[0].date))
+        # logger.info('i[0].price in analysis: {}'.format(i[0].price))
+        # logger.info('i[0].order_type in analysis: {}'.format(i[0].order_type))
+        # logger.info('i[0].lots in analysis: {}'.format(i[0].lots))
+        # logger.info('i[1].lots in analysis: {}'.format(i[1].lots))
+        d['lots'] = round(min(i[0].lots, i[1].lots), 3)
         d['exit_date'] = i[1].date
         d['exit_price'] = i[1].price
         d['pl_points'] = i[1].price - i[0].price
         d['execute_type'] = i[1].execute_type
         d['re_profit'] = (
-            (f.price - i[0].price) * d['units'] * units * i[0].direction)
+            (f.price - i[0].price) * d['lots'] * lots * i[0].direction)
 
-        comm = f.per_comm * units
-        d['commission'] = d['units'] * comm * f.price * 2
+        comm = f.per_comm * lots
+        d['commission'] = d['lots'] * comm * f.price * 2
         trade_log_list.append(d)
 
     df = pd.DataFrame(trade_log_list)
     df['cumul_total'] = (df['re_profit'] - df['commission']).cumsum()
-    return df[['entry_date', 'entry_price', 'order_type', 'units', 'exit_date',
+    return df[['entry_date', 'entry_price', 'order_type', 'lots', 'exit_date',
                'exit_price', 'execute_type', 'pl_points', 're_profit',
                'commission', 'cumul_total']]
 
@@ -107,18 +129,19 @@ def _get_trade_bars(ts, trade_log, op):
 
 # -------------------------总体数据---------------------------
 
-def beginning_balance(capital):
+def beginning_equity(capital):
     """初始资金"""
     return capital
 
 
-def ending_balance(dbal):
+def ending_equity(dbal):
     """最终权益"""
-    return dbal.iloc[-1]['balance']
+    return dbal.iloc[-1]['equity']
 
 
 def total_net_profit(trade_log):
     """净利润"""
+    logger.info('---------trade_log---------: {}'.format(trade_log))
     return trade_log.iloc[-1]['cumul_total']
 
 
@@ -146,9 +169,9 @@ def return_on_initial_capital(trade_log, capital):
     return total_net_profit(trade_log) / capital * 100
 
 
-def annual_return_rate(end_balance, capital, start, end):
+def annual_return_rate(end_equity, capital, start, end):
     """计算年复合增长率（compound annual growth rate）"""
-    B = end_balance
+    B = end_equity
     A = capital
     n = _difference_in_years(start, end)
     cagr = (math.pow(B / A, 1 / n) - 1) * 100
@@ -547,18 +570,18 @@ def stats(ts, trade_log, dbal, start, end, capital):
     # 总体数据
     stats['start'] = start.strftime("%Y-%m-%d %H:%M:%S")
     stats['end'] = end.strftime("%Y-%m-%d %H:%M:%S")
-    stats['beginning_balance'] = beginning_balance(capital)
-    stats['ending_balance'] = ending_balance(dbal)
+    stats['beginning_equity'] = beginning_equity(capital)
+    stats['ending_equity'] = ending_equity(dbal)
     stats['unrealized_profit'] = (
-        ending_balance(dbal) - total_net_profit(trade_log) - (
-            beginning_balance(capital)))
+        ending_equity(dbal) - total_net_profit(trade_log) - (
+            beginning_equity(capital)))
     stats['total_net_profit'] = total_net_profit(trade_log)
     stats['gross_profit'] = gross_profit(trade_log)
     stats['gross_loss'] = gross_loss(trade_log)
     stats['profit_factor'] = profit_factor(trade_log)
     stats['return_on_initial_capital'] = (
         return_on_initial_capital(trade_log, capital))
-    cagr = annual_return_rate(dbal['balance'][-1], capital, start, end)
+    cagr = annual_return_rate(dbal['equity'][-1], capital, start, end)
     stats['annual_return_rate'] = cagr
     stats['trading_period'] = trading_period(start, end)
     stats['pct_time_in_market'] = (
@@ -604,7 +627,7 @@ def stats(ts, trade_log, dbal, start, end, capital):
     stats['avg_bars_losing_trades'] = avg_bars_losing_trades(ts, trade_log)
 
     # 回撤
-    dd = max_closed_out_drawdown(dbal['balance'])
+    dd = max_closed_out_drawdown(dbal['equity'])
     stats['max_closed_out_drawdown'] = dd['max']
     stats['max_closed_out_drawdown_start_date'] = dd['start_date']
     stats['max_closed_out_drawdown_end_date'] = dd['end_date']
@@ -613,43 +636,43 @@ def stats(ts, trade_log, dbal, start, end, capital):
         datetime.strptime(dd['start_date'], "%Y-%m-%d %H:%M:%S"),
         datetime.strptime(dd['end_date'], "%Y-%m-%d %H:%M:%S")) * -1
     stats['drawdown_annualized_return'] = dd['max'] / cagr
-    # dd = max_intra_day_drawdown(dbal['balance_high'], dbal['balance_low'])
+    # dd = max_intra_day_drawdown(dbal['equity_high'], dbal['equity_low'])
     # stats['max_intra_day_drawdown'] = dd['max']
-    dd = rolling_max_dd(dbal['balance'], TRADING_DAYS_PER_YEAR)
+    dd = rolling_max_dd(dbal['equity'], TRADING_DAYS_PER_YEAR)
     stats['avg_yearly_closed_out_drawdown'] = np.average(dd)
     stats['max_yearly_closed_out_drawdown'] = min(dd)
-    dd = rolling_max_dd(dbal['balance'], TRADING_DAYS_PER_MONTH)
+    dd = rolling_max_dd(dbal['equity'], TRADING_DAYS_PER_MONTH)
     stats['avg_monthly_closed_out_drawdown'] = np.average(dd)
     stats['max_monthly_closed_out_drawdown'] = min(dd)
-    dd = rolling_max_dd(dbal['balance'], TRADING_DAYS_PER_WEEK)
+    dd = rolling_max_dd(dbal['equity'], TRADING_DAYS_PER_WEEK)
     stats['avg_weekly_closed_out_drawdown'] = np.average(dd)
     stats['max_weekly_closed_out_drawdown'] = min(dd)
 
     # 回升
-    ru = rolling_max_ru(dbal['balance'], TRADING_DAYS_PER_YEAR)
+    ru = rolling_max_ru(dbal['equity'], TRADING_DAYS_PER_YEAR)
     stats['avg_yearly_closed_out_runup'] = np.average(ru)
     stats['max_yearly_closed_out_runup'] = ru.max()
-    ru = rolling_max_ru(dbal['balance'], TRADING_DAYS_PER_MONTH)
+    ru = rolling_max_ru(dbal['equity'], TRADING_DAYS_PER_MONTH)
     stats['avg_monthly_closed_out_runup'] = np.average(ru)
     stats['max_monthly_closed_out_runup'] = max(ru)
-    ru = rolling_max_ru(dbal['balance'], TRADING_DAYS_PER_WEEK)
+    ru = rolling_max_ru(dbal['equity'], TRADING_DAYS_PER_WEEK)
     stats['avg_weekly_closed_out_runup'] = np.average(ru)
     stats['max_weekly_closed_out_runup'] = max(ru)
 
     # 百分比变化
-    pc = pct_change(dbal['balance'], TRADING_DAYS_PER_YEAR)
+    pc = pct_change(dbal['equity'], TRADING_DAYS_PER_YEAR)
     stats['pct_profitable_years'] = (pc > 0).sum() / len(pc) * 100
     stats['best_year'] = pc.max()
     stats['worst_year'] = pc.min()
     stats['avg_year'] = np.average(pc)
     stats['annual_std'] = pc.std()
-    pc = pct_change(dbal['balance'], TRADING_DAYS_PER_MONTH)
+    pc = pct_change(dbal['equity'], TRADING_DAYS_PER_MONTH)
     stats['pct_profitable_months'] = (pc > 0).sum() / len(pc) * 100
     stats['best_month'] = pc.max()
     stats['worst_month'] = pc.min()
     stats['avg_month'] = np.average(pc)
     stats['monthly_std'] = pc.std()
-    pc = pct_change(dbal['balance'], TRADING_DAYS_PER_WEEK)
+    pc = pct_change(dbal['equity'], TRADING_DAYS_PER_WEEK)
     stats['pct_profitable_weeks'] = (pc > 0).sum() / len(pc) * 100
     stats['best_week'] = pc.max()
     stats['worst_week'] = pc.min()
@@ -657,8 +680,8 @@ def stats(ts, trade_log, dbal, start, end, capital):
     stats['weekly_std'] = pc.std()
 
     # 比率
-    stats['sharpe_ratio'] = sharpe_ratio(dbal['balance'].pct_change())
-    stats['sortino_ratio'] = sortino_ratio(dbal['balance'].pct_change())
+    stats['sharpe_ratio'] = sharpe_ratio(dbal['equity'].pct_change())
+    stats['sortino_ratio'] = sortino_ratio(dbal['equity'].pct_change())
 
     for i, j in stats.items():
         if type(j) is not str:

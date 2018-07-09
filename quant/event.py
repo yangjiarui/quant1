@@ -8,7 +8,7 @@ events = queue.Queue()
 class EventBase(object):
     """
     传递各种事件，把order的属性传给event，并设定event的相关属性，包括：
-    feed, date, instrument, 
+    feed, date, instrument,
     """
 
     def __init__(self, order):
@@ -52,7 +52,7 @@ class EventBase(object):
 
     @price.setter
     def price(self, value):
-        self._order.set_price(value)    
+        self._order.set_price(value)
 
     @property
     def order_type(self):
@@ -141,6 +141,15 @@ class EventBase(object):
     @units.setter
     def units(self, value):
         self._order.set_units(value)
+
+    @property
+    def bs_price(self) -> list:
+        """buy and sell price list"""
+        return self._order.bs_price
+
+    @bs_price.setter
+    def bs_price(self, value) -> list:
+        return self._order.set_bs_price(value)
 
 
 class MarketEvent(object):

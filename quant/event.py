@@ -26,9 +26,9 @@ class EventBase(object):
     def feed(self):
         return self._order.feed
 
-    @feed.setter
-    def feed(self, value):
-        self._order.set_feed(value)
+    # @feed.setter
+    # def feed(self, value):
+    #     self._order.set_feed(value)
 
     @property
     def lots(self):

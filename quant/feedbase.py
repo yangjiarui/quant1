@@ -5,7 +5,7 @@ import csv
 from quant.barbase import Current_bar, Bar
 from quant.event import events, MarketEvent
 from quant.logging_backtest import logger
-import time
+from quant.context import Context
 
 
 class DataHandler(ABC):
@@ -143,6 +143,7 @@ class DataHandler(ABC):
         pass
 
     def prenext(self):
+        logger.info('---------call from main.__load_all_feed-------')
         self.get_new_bar()
 
     def next(self):
@@ -150,8 +151,9 @@ class DataHandler(ABC):
             self.skipped = True
             return
         self.__update_bar()
-        events.put(MarketEvent(self))
-        logger.debug('-----------------------------------------')
+        market_event = Context().MarketEvent
+        events.put(market_event(self))
+        logger.info('---------------------feedbase.next--------------------')
 
 
 class CSVDataReader(DataHandler):
@@ -237,7 +239,7 @@ class CSVDataReader(DataHandler):
         self.set_iteration_buffer(self.load_data())
 
         def _update():
-            bar = next(self._iteration_buffer)
+            bar = next(self._iteration_buffer)  # 每次读取一组数据
             logger.debug('bar: {}'.format(bar))
             bar['time'] = self.__set_bar_date(bar)
 

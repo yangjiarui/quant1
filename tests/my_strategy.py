@@ -5,6 +5,7 @@ from quant.feedbase import CSVDataReader, CSV
 from quant.portfolio import Portfolio
 from quant.logging_backtest import logger
 # from quant.indicator import Indicator
+from quant.context import Context
 
 
 class MyStrategy(Strategy):
@@ -67,21 +68,35 @@ class MyStrategy(Strategy):
         # ma5_last
 
 
-trade = Quant()
+context = Context()
+context.start_date = '2013-01-04'
+context.end_date = '2013-12-11'
+
 data = CSV(
     # datapath='../data/IF_cleaned_data.csv',
     datapath='../data/CFFEX沪深300期货IF主连.csv',
     # datapath='/home/demlution/桌面/quant/data/IF_cleaned_data.csv',
     instrument='IF',
-    startdate='2013-01-04',
-    enddate='2013-12-11')
-data_list = [data]
-portfolio = Portfolio
-strategy = MyStrategy
+    startdate=context.start_date,
+    enddate=context.end_date)
+# data_list = [data]
+# portfolio = Portfolio
+# strategy = MyStrategy
 
-trade.set_backtest(data_list, [strategy], portfolio)
-trade.set_commission(commission=0.0003, margin=0.08, units=300, lots=1, instrument='IF')
-trade.set_cash(500000)
+context.feed_list = [data]
+context.strategy = [MyStrategy]
+context.commission = 0.0003
+context.margin = 0.08
+context.units = 300
+context.lots = 1
+context.instrument = 'IF'
+context.initial_cash = 500000
+
+trade = Quant(context)
+trade.get_ready()
+# trade.set_backtest(data_list, [strategy], portfolio)  # 传入feed_list=data_list
+# trade.set_commission(commission=0.0003, margin=0.08, units=300, lots=1, instrument='IF')
+# trade.set_cash(500000)
 trade.set_notify()
 trade.run()
 logger.debug(trade.get_trade_log('IF'))

@@ -14,18 +14,36 @@ from quant.event import events
 from quant.logging_backtest import logger
 from quant import plotter
 from datetime import datetime
+from quant.portfolio import Portfolio
+# from quant.context import Context
 
 date = datetime.now().strftime('%Y-%m-%d-%H-%M')
+# context = Context()
 
 
 class Quant(object):
-    def __init__(self):
+    def __init__(self, context):
         self.feed_list = []
         self.strategy_list = []
         self.bar = None
         self.portfolio = None
         self.broker = None
         self.fill = None
+        self.context = context
+
+    def get_ready(self):
+        """准备数据，设置参数"""
+        feed_list = self.context.feed_list
+        strategy_list = self.context.strategy
+        portfolio = Portfolio
+        self.set_backtest(feed_list, strategy_list, portfolio)
+        commission = self.context.commission
+        margin = self.context.margin
+        units = self.context.units
+        lots = self.context.units
+        instrument = self.context.instrument
+        self.set_commission(commission, margin, units, lots, instrument)
+        self.set_cash(self.context.initial_cash)
 
     def run(self):
         """主循环"""
@@ -33,10 +51,10 @@ class Quant(object):
 
         while True:
             try:
-                event = events.get(False)
+                event = events.get(False)  # 当 queue 为空时，raise queue.Empty
                 logger.debug('events.qsize(): {}'.format(events.qsize()))
             except queue.Empty:
-                self.__load_all_feed()
+                self.__load_all_feed()  # 加载新行情
                 logger.debug('self.__check_backtest_finished(): {}'.format(
                     self.__check_backtest_finished()))
                 if not self.__check_backtest_finished():
@@ -45,25 +63,31 @@ class Quant(object):
                         # logger.debug('events.qsize(): {}'.format(events.qsize()))
                         continue
                     else:
-                        logger.debug('self.feed_list[-1].cur_bar.next_date: {}'.format(self.feed_list[-1].cur_bar.next_date))
-                        self.__update_time_index()
-                        logger.debug('self.feed_list[-1].cur_bar.cur_date: {}'.format(self.feed_list[-1].cur_bar.cur_date))
-                        self.__check_pending_order()
+                        logger.debug('self.feed_list[-1].cur_bar.next_date: {}'.format(
+                            self.feed_list[-1].cur_bar.next_date))
+                        self.__update_time_index()  # 更新基本信息
+                        logger.debug('self.feed_list[-1].cur_bar.cur_date: {}'.format(
+                            self.feed_list[-1].cur_bar.cur_date))
+                        self.__check_pending_order()  # 检查订单是否成交
 
             else:
                 if event.type == 'Market':
-                    self.__pass_to_market(event)
+                    self.context.market_event.append(event)
+                    self.__pass_to_market(event)  # 传递账户基本信息
 
                     for strategy in self.strategy_list:
                         strategy(event).run_strategy()
 
                 elif event.type == 'Signal':
+                    self.context.signal_event.append(event)
                     self.portfolio.run_portfolio(event)
 
                 elif event.type == 'Order':
+                    self.context.order_event.append(event)
                     self.broker.run_broker(event)
 
                 elif event.type == 'Fill':
+                    self.context.fill_event.append(event)
                     self.fill.run_fill(event)
 
                 if self.__check_backtest_finished():
@@ -72,7 +96,7 @@ class Quant(object):
 
     def __initialization(self):
         """对所有 feed 和 fill 内各项数据进行初始化"""
-        logger.debug('feed_list in main initialization: {}'.format(self.feed_list))
+        logger.info('feed_list in main initialization: {}'.format(self.feed_list))
         for feed in self.feed_list:
             feed.load_once()
             instrument = feed.instrument
@@ -101,6 +125,7 @@ class Quant(object):
             feed.start()
             feed.prenext()
             feed.next()
+            self.context.count += 1  # 计算 K 线数
 
     def __update_time_index(self):
         """每次更新行情后，根据新行情更新仓位、现金、保证金等账户基本信息"""
@@ -150,8 +175,9 @@ class Quant(object):
         self.broker = broker()
 
     def __set_fill(self, fill):
-        """添加交易执行模块"""
+        """添加交易记录模块"""
         self.fill = fill()
+        self.context.fill = self.fill
 
     def set_execute_mode(self, execute_mode='open'):
         """
@@ -239,16 +265,23 @@ class Quant(object):
         # max_drawdown_pct, duration_for_pct = create_drawdowns(total['equity'])
         # logger.info('------------max_drawdown, duration----------: {} {}'.format(max_drawdown_pct, duration_for_pct))
         # logger.info('------------max_drawdown, duration----------: {} {}'.format(max_drawdown_value, duration_for_value))
+        # 计算测试天数
+        date_type = '%Y-%m-%d'
+        start_date = datetime.strptime(self.context.start_date, date_type)
+        end_date = datetime.strptime(self.context.end_date, date_type)
+        self.context.test_days = (end_date - start_date).days
         results = OrderedDict()
-        # results['测试天数'] = 怎么传递？  # 从测试数据开始到结束的天数
-        # results['测试周期'] =   # 测试数据的 K 线数
+        results['测试开始时间'] = self.context.start_date
+        results['测试结束时间'] = self.context.end_date
+        results['测试天数'] = self.context.test_days  # 从测试数据开始到结束的天数
+        results['测试周期'] = self.context.count  # 测试数据的 K 线数
         results['指令总数'] = len(self.fill.completed_list)  # 指令总数
         results['初始资金'] = self.fill.initial_cash
-        results['最终权益'] = round(self.fill.equity[-1], 3)  # 最终权益
+        results['最终权益'] = round(self.fill.equity[-1], 2)  # 最终权益
         logger.info('------------results-----------: {}'.format(results))
         total_return = round(results['最终权益'] / self.fill.initial_cash - 1, 4)
         logger.info('------------total_return-----------: {}'.format(total_return))
-        results['夏普比率'] = round(create_sharpe_ratio(pct_returns), 3)
+        results['夏普比率'] = round(create_sharpe_ratio(pct_returns), 2)
         results['盈利率'] = str(round(total_return * 100, 2)) + '%'
         results['最大回撤'] = drawdown['drawdown'].max()
         results['最大回撤时间'] = drawdown['date'][drawdown['drawdown'].idxmax()]  # 只能找出一个 index
@@ -270,12 +303,13 @@ class Quant(object):
         """输出详细的结果分析"""
         logger.info('-----get_analysis-----')
         ohlc_data = self.feed_list[0].bar.df
+        self.context.ohlc_data = self.feed_list[0].bar.df  # pd.DataFrame
         ohlc_data.set_index('time', inplace=True)
         ohlc_data.index = pd.DatetimeIndex(ohlc_data.index)
 
         dbal = self.fill.equity.df  # 权益
-        start = dbal.index[0]  # 初始权益
-        end = dbal.index[-1]  # 最终权益
+        start = dbal.index[0]  # 开始日期
+        end = dbal.index[-1]  # 结束日期
         capital = self.fill.initial_cash  # 初始资金
         trade_log = self.get_trade_log(instrument)
         logger.info('------trade_log-----: {}'.format(trade_log))
@@ -284,6 +318,8 @@ class Quant(object):
         trade_log.reset_index(drop=True, inplace=True)
         analysis = stats(ohlc_data, trade_log, dbal, start, end, capital)
         analysis_table = dict_to_table(analysis)
+        with open('analysis_table.txt', 'w') as f:
+            f.write(str(analysis_table))
         logger.info('analysis_table: {}'.format(analysis_table))
 
     def plot(self, instrument, engine='plotly', notebook=False):

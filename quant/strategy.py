@@ -4,6 +4,9 @@ from quant.event import events, SignalEvent
 from quant.indicator import Indicator  # Open, High, Low, Close, MaxHigh, MinLow
 from quant.order import BuyOrder, SellOrder, ExitAllOrder
 from quant.logging_backtest import logger
+from quant.context import Context
+
+signal_event = Context().SignalEvent
 
 
 class StrategyBase(ABC):
@@ -87,7 +90,7 @@ class StrategyBase(ABC):
             stop_loss=stop_loss,
             trailing_stop=trailing_stop)
         logger.debug('self.position[-1] in buy_base: {}'.format(self.position[-1]))
-        self._signal_list.append(SignalEvent(buy_order))
+        self._signal_list.append(signal_event(buy_order))
 
     def sell_base(self,
                   lots,
@@ -105,7 +108,7 @@ class StrategyBase(ABC):
             stop_loss=stop_loss,
             trailing_stop=trailing_stop)
         logger.debug('self.position[-1] in sell_base: {}'.format(self.position[-1]))
-        self._signal_list.append(SignalEvent(sell_order))
+        self._signal_list.append(signal_event(sell_order))
 
     def buy(self,
             lots,
@@ -191,7 +194,7 @@ class StrategyBase(ABC):
             take_profit=None,
             stop_loss=None,
             trailing_stop=None)
-        self._signal_list.append(SignalEvent(exit_all_order))
+        self._signal_list.append(signal_event(exit_all_order))
 
     def cancel(self):
         pass

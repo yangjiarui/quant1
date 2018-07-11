@@ -2,6 +2,9 @@
 from abc import ABC, abstractmethod
 from quant.event import events, FillEvent
 from quant.logging_backtest import logger
+from quant.context import Context
+
+fill_event = Context().FillEvent
 
 
 class BrokerBase(ABC):
@@ -62,8 +65,8 @@ class Broker(BrokerBase):
 
     def submit_order(self):
         """发送交易指令"""
-        fill_event = FillEvent(self.order_event.order)
-        events.put(fill_event)
+        fill_order = fill_event(self.order_event.order)
+        events.put(fill_order)
 
     def check_before(self):
         """

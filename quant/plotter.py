@@ -42,14 +42,14 @@ class Plotter(PlotBase):
                     name=instrument)
                 self.data.append(p_symbol)
 
-        # # 调试用
-        # for position in self.position_df:
-        #     p_position = go.Scatter(
-        #         x=self.position_df.index,
-        #         y=self.position_df[position],
-        #         xaxis='x2',
-        #         yaxis='y2',
-        #         name='仓位')
+        # 调试用
+        for position in self.position_df:
+            p_position = go.Scatter(
+                x=self.position_df.index,
+                y=self.position_df[position],
+                xaxis='x7',
+                yaxis='y7',
+                name='仓位')
 
         p_equity = go.Scatter(
             x=self.equity_df.index,
@@ -87,7 +87,7 @@ class Plotter(PlotBase):
         #     yaxis='y4',
         #     name='手续费')
 
-        # self.data.append(p_position)
+        self.data.append(p_position)
         self.data.append(p_equity)
         self.data.append(p_cash)
         self.data.append(p_unrealized_gain_and_loss)
@@ -100,6 +100,7 @@ class Plotter(PlotBase):
             xaxis4=dict(domain=[0, 1], anchor='y4', scaleanchor='x2', autorange=True),
             xaxis5=dict(domain=[0, 1], anchor='y5', scaleanchor='x2', autorange=True),
             xaxis6=dict(domain=[0, 1], anchor='y6', scaleanchor='x2', autorange=True),
+            xaxis7=dict(domain=[0, 1], anchor='y7', scaleanchor='x2', autorange=True),
             yaxis2=dict(domain=[0, 0.2], scaleanchor='x2', autorange=True,),
             yaxis3=dict(domain=[0.2, 0.4], scaleanchor='x2', autorange=True,),
             yaxis4=dict(domain=[0.4, 0.6], scaleanchor='x2', autorange=True,),
@@ -113,7 +114,8 @@ class Plotter(PlotBase):
             #     showgrid=False,
             #     scaleanchor='x2'),
             yaxis5=dict(domain=[0.6, 0.8], scaleanchor='x2', autorange=True),
-            yaxis6=dict(domain=[0.8, 1], scaleanchor='x2', autorange=True))
+            yaxis6=dict(domain=[0.8, 0.9], scaleanchor='x2', autorange=True),
+            yaxis7=dict(domain=[0.9, 1], scaleanchor='x2', autorange=True))
         fig = go.Figure(data=self.data, layout=layout)
         if notebook:
             import plotly

@@ -318,7 +318,7 @@ class Quant(object):
         trade_log.reset_index(drop=True, inplace=True)
         analysis = stats(ohlc_data, trade_log, dbal, start, end, capital)
         analysis_table = dict_to_table(analysis)
-        with open('analysis_table.txt', 'w') as f:
+        with open(date + '_analysis_table.txt', 'w') as f:
             f.write(str(analysis_table))
         logger.info('analysis_table: {}'.format(analysis_table))
 

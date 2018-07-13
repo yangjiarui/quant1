@@ -706,7 +706,7 @@ def sortino_ratio(rets, risk_free=0.00, period=TRADING_DAYS_PER_YEAR):
 
 # -------------------------产生各种统计数据的主要调用函数---------------------------
 
-def stats(trade_log, context):
+def stats(ohlc_data, trade_log, equity, start, end, capital):
     """
     计算交易后的统计数据
     Parameters：
@@ -717,16 +717,17 @@ def stats(trade_log, context):
     Returns：
         stats : 各个统计量的 Series
     """
-    equity = context.fill.equity.df
-    start = context.start_date
-    end = context.end_date
-    ohlc_data = context.ohlc_data
+    # equity = context.fill.equity.df
+    # start = datetime.strptime(context.start_date, '%Y-%m-%d')
+    # end = datetime.strptime(context.end_date, '%Y-%m-%d')
+    # ohlc_data = context.ohlc_data
+    # capital = context.initial_cash
     stats = OrderedDict()
 
     # 总体数据
-    stats['测试开始时间'] = context.start_date.strftime("%Y-%m-%d %H:%M:%S")
-    stats['测试结束时间'] = context.end_date.strftime("%Y-%m-%d %H:%M:%S")
-    stats['初始资金'] = beginning_equity(context.initial_cash)
+    stats['测试开始时间'] = start.strftime("%Y-%m-%d %H:%M:%S")
+    stats['测试结束时间'] = end.strftime("%Y-%m-%d %H:%M:%S")
+    stats['初始资金'] = beginning_equity(capital)
     stats['最终权益'] = ending_equity(equity)
     # stats['unrealized_profit'] = (
     #     ending_equity(dbal) - total_net_profit(trade_log) - (
@@ -741,7 +742,7 @@ def stats(trade_log, context):
     stats['年化单利收益率'] = rate
     compound_rate = annual_compound_return_rate(equity['equity'][-1], capital, start, end)
     stats['年化复利收益率'] = compound_rate
-    stats['测试周期数'] = context.test_days
+    # stats['测试周期数'] = context.test_days
     stats['pct_time_in_market'] = (
         pct_time_in_market(ohlc_data, trade_log, start, end))
 
@@ -793,6 +794,7 @@ def stats(trade_log, context):
     stats['drawdown_recovery'] = _difference_in_years(
         datetime.strptime(dd['start_date'], "%Y-%m-%d %H:%M:%S"),
         datetime.strptime(dd['end_date'], "%Y-%m-%d %H:%M:%S")) * -1
+    cagr = annual_return_rate(equity['equity'][-1], capital, start, end)
     stats['drawdown_annualized_return'] = dd['max'] / cagr
     # dd = max_intra_day_drawdown(equity['equity_high'], equity['equity_low'])
     # stats['max_intra_day_drawdown'] = dd['max']

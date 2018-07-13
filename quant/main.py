@@ -303,16 +303,24 @@ class Quant(object):
         """输出详细的结果分析"""
         logger.info('-----get_analysis-----')
         ohlc_data = self.feed_list[0].bar.df
-        self.context.ohlc_data = self.feed_list[0].bar.df  # pd.DataFrame
-        ohlc_data.set_index('time', inplace=True)
-        ohlc_data.index = pd.DatetimeIndex(ohlc_data.index)
+        ohlc_data.set_index('time', inplace=True)  # 设立新索引
+        ohlc_data.index = pd.DatetimeIndex(ohlc_data.index)  # 将新索引转换为 DatetimeIndex
+        logger.debug('------ohlc_data.index------: {}'.format(ohlc_data.index))
+        logger.debug('------type of ohlc_data.index------: {}'.format(type(ohlc_data.index)))
+        self.context.ohlc_data = ohlc_data  # pd.DataFrame
 
         dbal = self.fill.equity.df  # 权益
         start = dbal.index[0]  # 开始日期
         end = dbal.index[-1]  # 结束日期
+        logger.info('----start----: {}'.format(start))
+        logger.info('----end----: {}'.format(end))
+        logger.info('----type of end----: {}'.format(type(end)))
+        logger.info('----context.start_date----: {}'.format(self.context.start_date))
+        logger.info('----context.end_date----: {}'.format(self.context.end_date))
+        logger.info('----type of context.end_date----: {}'.format(type(self.context.end_date)))
         capital = self.fill.initial_cash  # 初始资金
         trade_log = self.get_trade_log(instrument)
-        logger.info('------trade_log-----: {}'.format(trade_log))
+        # logger.info('------trade_log-----: {}'.format(trade_log))
         trade_log = trade_log[trade_log['lots'] != 0]
         logger.info('------trade_log-----: {}'.format(trade_log))
         trade_log.reset_index(drop=True, inplace=True)

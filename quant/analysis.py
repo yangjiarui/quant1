@@ -112,7 +112,7 @@ def create_trade_log(completed_list, lots):
                'commission', 'cumul_total']]
 
 
-def _difference_in_years(start, end):
+def _difference_in_years(start: Timestamp, end: Timestamp):
     """计算start和end两个日期间的年份差，365.2425为公历年"""
     diff = end - start
     diff_in_years = (diff.days + diff.seconds / 86400) / 365.2425
@@ -787,6 +787,9 @@ def stats(ohlc_data, trade_log, equity, start, end, capital):
 
     # 回撤
     dd = max_closed_out_drawdown(equity['equity'])
+    logger.info('-----dd["start_date"]-------: {}'.format(dd['start_date']))  # 2013-07-03 00:00:00
+    logger.info('-----type of dd["start_date"]-------: {}'.format(type(dd['start_date'])))  # str
+    logger.debug('-----dd["start_date"].strptime-------: {}'.format(datetime.strptime(dd['start_date'], "%Y-%m-%d %H:%M:%S")))
     stats['max_closed_out_drawdown'] = dd['max']
     stats['max_closed_out_drawdown_start_date'] = dd['start_date']
     stats['max_closed_out_drawdown_end_date'] = dd['end_date']

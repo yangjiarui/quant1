@@ -112,7 +112,7 @@ def create_trade_log(completed_list, lots):
                'commission', 'cumul_total']]
 
 
-def _difference_in_years(start: Timestamp, end: Timestamp):
+def _difference_in_years(start: pd.Timestamp, end: pd.Timestamp):
     """计算start和end两个日期间的年份差，365.2425为公历年"""
     diff = end - start
     diff_in_years = (diff.days + diff.seconds / 86400) / 365.2425

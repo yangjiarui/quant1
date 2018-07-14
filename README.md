@@ -41,6 +41,10 @@ pip 10.0.1 from /xxx/python3.6/site-packages/pip (python 3.6)
 git clone https://z123zero@bitbucket.org/z123zero/quant.git
 cd quant
 pip install -r requirements.txt
+# 手动安装的话只需执行以下几句（pip 10.0.1）
+pip install TA-Lib  # 此包直接安装可能出错
+pip install pandas
+pip install plotly
 ```
 * 设置
 参考 http://python3-cookbook-personal.readthedocs.io/zh_CN/latest/c10/p09_add_directories_to_sys_path.html，将第三方库加入 Python 路径。

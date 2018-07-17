@@ -40,7 +40,7 @@ class Quant(object):
         commission = self.context.commission
         margin = self.context.margin
         units = self.context.units
-        lots = self.context.units
+        lots = self.context.lots
         instrument = self.context.instrument
         self.set_commission(commission, margin, units, lots, instrument)
         self.set_cash(self.context.initial_cash)
@@ -103,9 +103,13 @@ class Quant(object):
             self.fill.position.initialize(instrument, 0)
             self.fill.margin.initialize(instrument, 0)
             self.fill.commission.initialize(instrument, 0)
+            self.fill.long_commission.initialize(instrument, 0)
+            self.fill.short_commission.initialize(instrument, 0)
             self.fill.avg_price.initialize(instrument, 0)
             self.fill.unrealized_gain_and_loss.initialize(instrument, 0)
             self.fill.realized_gain_and_loss.initialize(instrument, 0)
+            self.fill.long_realized_gain_and_loss.initialize(instrument, 0)
+            self.fill.short_realized_gain_and_loss.initialize(instrument, 0)
         self.fill.cash.initialize('all', self.fill.initial_cash)
         self.fill.equity.initialize('all', self.fill.initial_cash)
 
@@ -285,8 +289,34 @@ class Quant(object):
         results['盈利率'] = str(round(total_return * 100, 2)) + '%'
         results['最大回撤'] = drawdown['drawdown'].max()
         results['最大回撤时间'] = drawdown['date'][drawdown['drawdown'].idxmax()]  # 只能找出一个 index
-        results['最大回撤比'] = drawdown['pct'].max()
+        results['最大回撤比'] = str(round(drawdown['pct'].max() * 100, 2)) + '%'
         results['最大回撤比时间'] = drawdown['date'][drawdown['pct'].idxmax()]
+        logger.info('----short_realized_gain_and_loss----: {}'.format(
+            self.fill.short_realized_gain_and_loss.dict))
+        logger.info('---type of short_realized_gain_and_loss.list---: {}'.format(
+            type(self.fill.short_realized_gain_and_loss.list)))
+        logger.info('---short_realized_gain_and_loss.list---: {}'.format(
+            self.fill.short_realized_gain_and_loss.list))
+
+        long_profit = [i for i in self.fill.long_realized_gain_and_loss.list if i >= 0]
+        long_loss = [i for i in self.fill.long_realized_gain_and_loss.list if i < 0]
+        long_commission = self.fill.long_commission.list
+        short_profit = [i for i in self.fill.short_realized_gain_and_loss.list if i >= 0]
+        short_loss = [i for i in self.fill.short_realized_gain_and_loss.list if i < 0]
+        short_commission = self.fill.short_commission.list
+        logger.info('---self.fill.long_realized_gain_and_loss.list---: {}'.format(
+            self.fill.long_realized_gain_and_loss.list))
+        logger.info('---self.fill.short_realized_gain_and_loss.list---: {}'.format(
+            self.fill.short_realized_gain_and_loss.list))
+        logger.info('----long_profit, long_loss---: {} {}'.format(long_profit, long_loss))
+        logger.info('----long_commission---: {}'.format(long_commission))
+        logger.info('----short_profit, short_loss---: {} {}'.format(short_profit, short_loss))
+        logger.info('----short_commission---: {}'.format(short_commission))
+        results['多头总盈利'] = round(sum(long_profit), 2)
+        results['多头总亏损'] = round(sum(long_loss), 2)
+        results['空头总盈利'] = round(sum(short_profit), 2)
+        results['空头总亏损'] = round(sum(short_loss), 2)
+        results['手续费'] = sum(long_commission) + sum(short_commission)
         logger.info('---------results---------: {}'.format(results))
         results_table = dict_to_table(results)
         with open(date + '_results.txt', 'w') as f:
@@ -322,6 +352,7 @@ class Quant(object):
         trade_log = self.get_trade_log(instrument)
         # logger.info('------trade_log-----: {}'.format(trade_log))
         trade_log = trade_log[trade_log['lots'] != 0]
+        trade_log.to_csv(date + '_trade_log.csv')
         logger.info('------trade_log-----: {}'.format(trade_log))
         trade_log.reset_index(drop=True, inplace=True)
         analysis = stats(ohlc_data, trade_log, dbal, start, end, capital)

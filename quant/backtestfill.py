@@ -16,9 +16,13 @@ class FillBase(object):
         self.margin = dataseries.MarginSeries()  # 保证金
         self.avg_price = dataseries.AvgPriceSeries()  # 均价
         self.commission = dataseries.CommissionSeries()  # 手续费
+        self.long_commission = dataseries.LongCommissionSeries()  # 多头手续费
+        self.short_commission = dataseries.ShortCommissionSeries()  # 空头手续费
         self.cash = dataseries.CashSeries()  # 现金
         # 平仓盈亏
         self.realized_gain_and_loss = dataseries.RealizedGainAndLossSeries()
+        self.long_realized_gain_and_loss = dataseries.LongRealizedGainAndLossSeries()
+        self.short_realized_gain_and_loss = dataseries.ShortRealizedGainAndLossSeries()
         logger.info('realized_gain_and_loss in init: {}'.format(self.realized_gain_and_loss))
         # 浮动盈亏
         self.unrealized_gain_and_loss = dataseries.UnrealizedGainAndLossSeries()
@@ -39,8 +43,12 @@ class FillBase(object):
         self.position.set_instrument(instrument)
         self.margin.set_instrument(instrument)
         self.commission.set_instrument(instrument)
+        self.long_commission.set_instrument(instrument)
+        self.short_commission.set_instrument(instrument)
         self.avg_price.set_instrument(instrument)
         self.realized_gain_and_loss.set_instrument(instrument)
+        self.long_realized_gain_and_loss.set_instrument(instrument)
+        self.short_realized_gain_and_loss.set_instrument(instrument)
         logger.info('realized_gain_and_loss in set_dataseries_instrument: {}'.format(self.realized_gain_and_loss.list))
         self.unrealized_gain_and_loss.set_instrument(instrument)
 
@@ -222,11 +230,20 @@ class BacktestFill(FillBase):
         logger.info('total_re_profit in date in update_equity: {} {}'.format(total_re_profit, fill_event.date))
         logger.info('self.realized_gain_and_loss.list: {}'.format(
             self.realized_gain_and_loss.list))
+        logger.info('self.realized_gain_and_loss.list: {}'.format(
+            self.long_realized_gain_and_loss.list))
+        logger.info('self.realized_gain_and_loss.list: {}'.format(
+            self.short_realized_gain_and_loss.list))
         total_profit = total_re_profit + self.unrealized_gain_and_loss.total()
         logger.info('total_profit in date in update_equity: {} {}'.format(total_profit, fill_event.date))
         total_commission = sum(self.commission.list)
+        last_commission = self.commission.list[-1]
         logger.info('total_commission in date in update_equity: {} {}'.format(total_commission, fill_event.date))
 
+        # buy_open = self.position[-2] == 0 and self.position[-1] > 0  # 买开仓，即做多
+        # sell_open = self.position[-2] == 0 and self.position[-1] < 0  # 卖开仓，即做空
+        # if buy_open or sell_open:
+        #     equity = np.round(self.initial_cash + total_re_profit - last_commission, 2)
         # equity = np.round(self.initial_cash + total_profit - total_commission, 2)
         equity = np.round(self.initial_cash + total_re_profit - total_commission, 2)
         logger.info('equity2 in date in update_equity: {} {}'.format(equity, fill_event.date))
@@ -247,6 +264,10 @@ class BacktestFill(FillBase):
         #     fill_event.date, equity, equity_high, equity_low))
         # logger.info('equity in date: {} {}'.format(equity, fill_event.date))
         # self.equity.add(fill_event.date, equity, equity_high, equity_low)
+
+    def update_long_equity(self, fill_event):
+        """更新多头盈亏情况"""
+        pass
 
     def update_cash(self, fill_event):
         """
@@ -421,12 +442,26 @@ class BacktestFill(FillBase):
         re_profit_list = self.realized_gain_and_loss.re_profit
 
         def get_re_profit(trade_units):
+            """计算平仓盈亏和手续费"""
             re_profit = np.round((f.price - i.price) * trade_units * f.units * i.direction, 2)
             logger.info('re_profit: {} {} {} {} {} {}'.format(re_profit, f.price, i.price, trade_units, f.units, i. direction))
+            commission_ = np.round(f.units * f.price * f.per_comm * f.lots, 2)
+            commission = commission_ + np.round(i.units * i.price * f.per_comm * i.lots, 2)
             re_profit_list.append(re_profit)
+            # 加入累计的盈亏
             self.realized_gain_and_loss.add(f.date, sum(re_profit_list))
-            logger.info('self.realized_gain_and_loss in backtestfill: {}'.format(self.realized_gain_and_loss))
-            logger.info('self.realized_gain_and_loss.date in backtestfill: {}'.format(self.realized_gain_and_loss.date))
+            if i.direction > 0:  # 多头平仓盈亏
+                self.realized_gain_and_loss.long_poisition_re_profit.append(re_profit - commission)
+                self.long_realized_gain_and_loss.add(f.date, re_profit - commission)
+                self.long_commission.add(f.date, commission)
+            else:  # 空头平仓盈亏
+                self.realized_gain_and_loss.short_position_re_profit.append(re_profit - commission)
+                self.short_realized_gain_and_loss.add(f.date, re_profit - commission)
+                self.short_commission.add(f.date, commission)
+            logger.debug('self.realized_gain_and_loss in backtestfill: {}'.format(
+                self.realized_gain_and_loss))
+            logger.debug('self.realized_gain_and_loss.date in backtestfill: {}'.format(
+                self.realized_gain_and_loss.date))
             if len(self.realized_gain_and_loss.date) > 1:
                 if self.realized_gain_and_loss.date[-2] is f.date:
                     new_realized_g_l = (
@@ -545,6 +580,7 @@ class BacktestFill(FillBase):
             i = copy(trade)  # 必须要复制，不然会修改掉原来的订单
             i.order = copy(trade.order)
             i.order.set_parent(trade)  # 等下要回去原来的列表里面找父类
+            logger.info('---------setting parent---------')
 
             if i.instrument != feed.instrument:
                 continue  # 不是同个instrument无法比较，所以跳过

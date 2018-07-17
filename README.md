@@ -10,7 +10,7 @@ AIQuant 回测框架
 ### 环境准备
 要使用 AIQuant 回测框架，首先需要做一些简单的环境准备。
 
-* 安装Python
+#### 安装Python
 在 https://www.python.org/downloads/ 获取最新版本的 Python。
 安装后，打开 shell，输入 python，应该得到下列内容：
 ```
@@ -30,39 +30,46 @@ pip3 --version
 pip 10.0.1 from /xxx/python3.6/site-packages/pip (python 3.6)
 ```
 
-* （可选）安装虚拟环境
+#### 安装虚拟环境（可选）
 参考 http://pythonguidecn.readthedocs.io/zh/latest/dev/virtualenvs.html，任选一种方式即可。
 
 ### 安装及设置
-* 安装
+#### 安装
 建议在虚拟环境中进行安装，这样不会打乱系统的包配置。
 下载代码：
 ```
 git clone https://z123zero@bitbucket.org/z123zero/quant.git
 cd quant
 pip install -r requirements.txt
-# 手动安装的话只需执行以下几句（pip 10.0.1）
-pip install TA-Lib  # 此包直接安装可能出错
+```
+安装 talib 时可能出错，建议按照 https://mrjbq7.github.io/ta-lib/install.html 操作。
+Windows 系统可以在 https://www.lfd.uci.edu/~gohlke/pythonlibs/#ta-lib 下载对应版本的 wheel。
+> pip install TA_Lib-xxx.whl  # 之后再重新安装包
+
+手动安装的话只需执行以下几句（pip 10.0.1）
+```
+pip install TA-Lib
 pip install pandas
 pip install plotly
 ```
-* 设置
-参考 http://python3-cookbook-personal.readthedocs.io/zh_CN/latest/c10/p09_add_directories_to_sys_path.html，将第三方库加入 Python 路径。
+#### 设置
+参考 http://python3-cookbook.readthedocs.io/zh_CN/latest/c10/p09_add_directories_to_sys_path.html，将第三方库加入 Python 路径。
 创建一个.pth文件，将目录列举出来，像这样：
 ```
 # quant.pth
 /somewhere/quant
 ```
 把这个.pth文件需要放在Python的site-packages目录，通常位于/usr/local/lib/python3.x/site-packages 或者 ~/.local/lib/python3.x/sitepackages。当解释器启动时，.pth文件里列举出来的存在于文件系统的目录将被添加到sys.path。
+
 ### 使用
-* 运行示例
+#### 运行示例
 ```
 cd tests/
 python my_strategy.py
 ```
 即可查看运行结果。
 
-* 编辑自己的策略
+#### 编辑自己的策略
 可以在任意目录新建自己的策略文件（Python 文件），基础的导入模块如下：
 ```python
 # your_strategy.py
@@ -72,7 +79,7 @@ from quant.feedbase import CSV
 from quant.portfolio import Portfolio
 from quant.logging_backtest import logger
 ```
-* 策略的主类：
+#### 策略的主类
 ```python
 class MyStrategy(Strategy):  # set your strategy's name
     def __init__(self, market_event):
@@ -90,7 +97,7 @@ class MyStrategy(Strategy):  # set your strategy's name
         """
         pass
 ```
-* 设置运行策略所需的数据和参数，运行框架
+#### 设置运行策略所需的数据和参数，运行框架
 ```python
 trade = Quant()
 data = CSV(

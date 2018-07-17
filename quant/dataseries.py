@@ -117,6 +117,16 @@ class CommissionSeries(DataSeriesBase):
     _name = 'commission'
 
 
+class LongCommissionSeries(DataSeriesBase):
+    """多头手续费"""
+    _name = 'long_commission'
+
+
+class ShortCommissionSeries(DataSeriesBase):
+    """空头手续费"""
+    _name = 'short_commission'
+
+
 class CashSeries(DataSeriesBase):
     """现金"""
     _name = 'cash'
@@ -126,10 +136,22 @@ class CashSeries(DataSeriesBase):
 class RealizedGainAndLossSeries(DataSeriesBase):
     """平仓盈亏，即已获得的盈亏"""
     _name = 'realized_gain_and_loss'
-    re_profit = []
+    re_profit = []  # 总平仓盈亏
+    long_poisition_re_profit = []  # 多头平仓盈亏
+    short_position_re_profit = []  # 空头平仓盈亏
     # def update_cur(self, realized_gain_and_loss):
     #     self._dict[self._instrument][-1][
     #         'realized_gain_and_loss'] = realized_gain_and_loss
+
+
+class LongRealizedGainAndLossSeries(DataSeriesBase):
+    """多头盈亏，含手续费"""
+    _name = 'long_realized_gain_and_loss'
+
+
+class ShortRealizedGainAndLossSeries(DataSeriesBase):
+    """空头盈亏，含手续费"""
+    _name = 'short_realized_gain_and_loss'
 
 
 class UnrealizedGainAndLossSeries(DataSeriesBase):

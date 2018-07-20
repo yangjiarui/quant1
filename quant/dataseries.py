@@ -59,7 +59,7 @@ class DataSeriesBase(object):
 
     @property
     def df(self):  # 转换数据为DataFrame格式
-        df = pd.DataFrame(self._dict[self._instrument][1:])
+        df = pd.DataFrame(self._dict[self._instrument][:])  # 从 1 开始会少一个数
         df.set_index('date', inplace=True)
         df.index = pd.DatetimeIndex(df.index)
         return df

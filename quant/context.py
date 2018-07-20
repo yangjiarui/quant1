@@ -36,6 +36,7 @@ class Context(object):
         self.count = 0
         self.test_days = 0
         self.ohlc_data = None
+        self.trade_log = None
 
 # 在 main 里调用，feed，order？
 # order 根据不同的情况值不同，也就是说这几个事件的调用是不同步的，不能单纯地把这几个

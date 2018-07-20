@@ -327,7 +327,7 @@ class Quant(object):
         completed_list = self.fill.completed_list
         for feed in self.feed_list:
             if feed.instrument is instrument:
-                return create_trade_log(completed_list, feed.lots)
+                return create_trade_log(completed_list, self.context)
 
     def get_analysis(self, instrument):
         """输出详细的结果分析"""
@@ -348,14 +348,15 @@ class Quant(object):
         logger.info('----context.start_date----: {}'.format(self.context.start_date))
         logger.info('----context.end_date----: {}'.format(self.context.end_date))
         logger.info('----type of context.end_date----: {}'.format(type(self.context.end_date)))
-        capital = self.fill.initial_cash  # 初始资金
+        # capital = self.fill.initial_cash  # 初始资金
         trade_log = self.get_trade_log(instrument)
         # logger.info('------trade_log-----: {}'.format(trade_log))
         trade_log = trade_log[trade_log['lots'] != 0]
         trade_log.to_csv(date + '_trade_log.csv')
+        self.context.trade_log = trade_log
         logger.info('------trade_log-----: {}'.format(trade_log))
         trade_log.reset_index(drop=True, inplace=True)
-        analysis = stats(ohlc_data, trade_log, dbal, start, end, capital)
+        analysis = stats(self.context)
         analysis_table = dict_to_table(analysis)
         with open(date + '_analysis_table.txt', 'w') as f:
             f.write(str(analysis_table))

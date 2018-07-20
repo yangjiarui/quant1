@@ -70,7 +70,7 @@ class MyStrategy(Strategy):
 
 context = Context()
 context.start_date = '2013-01-04'
-context.end_date = '2013-12-11'
+context.end_date = '2013-04-01'
 
 data = CSV(
     # datapath='../data/IF_cleaned_data.csv',

@@ -123,10 +123,21 @@ def create_trade_log(completed_list, context):
 
 
 def _difference_in_years(start: pd.Timestamp, end: pd.Timestamp):
-    """计算start和end两个日期间的年份差，365.2425为公历年"""
+    """计算 start 和 end 两个日期间的年份差，以 365 为一年"""
     diff = end - start
-    diff_in_years = (diff.days + diff.seconds / 86400) / 365.2425
+    diff_in_years = (diff.days + diff.seconds / 86400) / 365
     return diff_in_years
+
+
+def _difference_in_months(start: pd.Timestamp, end: pd.Timestamp):
+    """计算 start 和 end 两个日期间的年份差，以 30 为一个月"""
+    diff = end - start
+    diff_in_months = (diff.days + diff.seconds / 86400) / 30
+    return diff_in_months
+
+
+def add_pct(number: int or float):
+    return '{}%'.format(number)
 
 
 def _get_trade_bars(
@@ -180,14 +191,15 @@ def _get_trade_bars(
 #                 day_list.append(len(ohlc_data[open_date:close_date].index))
 
 
+# -------------------------自定义数据---------------------------
 def pct_profit_in_open(end_equity, capital, ohlc_data, trade_log):
-    """持仓日收益率，当日只要交易了就算持仓"""
+    """持仓日年化收益率，当日只要交易了就算持仓"""
     position_list = _get_trade_bars(ohlc_data, trade_log, _true_func)
     position_day = sum(position_list) - len(position_list)  # 日线情况
     logger.info('---position_day---: {} {} {}'.format(sum(position_list), len(position_list), position_day))
     profit = end_equity - capital
-    rate = str(profit / position_day * 100) + '%'
-    return rate
+    rate = profit / (position_day / 365)
+    return round(rate, 2)
 
 
 # -------------------------总体数据---------------------------
@@ -199,23 +211,23 @@ def beginning_equity(capital):
 
 def ending_equity(equity):
     """最终权益"""
-    return equity.iloc[-1]['equity']
+    return round(equity.iloc[-1]['equity'], 2)
 
 
 def total_net_profit(trade_log, capital):
     """净利润"""
     logger.debug('---------trade_log---------: {}'.format(trade_log))
-    return trade_log.iloc[-1]['equity'] - capital
+    return round(trade_log.iloc[-1]['equity'] - capital, 2)
 
 
 def gross_profit(trade_log):
     """总盈利"""
-    return trade_log[trade_log['re_profit'] > 0].sum()['re_profit']
+    return round(trade_log[trade_log['re_profit'] > 0].sum()['re_profit'], 2)
 
 
 def gross_loss(trade_log):
     """总亏损"""
-    return trade_log[trade_log['re_profit'] < 0].sum()['re_profit']
+    return round(trade_log[trade_log['re_profit'] < 0].sum()['re_profit'], 2)
 
 
 def profit_factor(trade_log):
@@ -224,30 +236,41 @@ def profit_factor(trade_log):
         return 0
     if gross_loss(trade_log) == 0:
         return 1000
-    return gross_profit(trade_log) / gross_loss(trade_log) * (-1)
+    return round(gross_profit(trade_log) / gross_loss(trade_log) * (-1), 2)
 
 
 def return_on_initial_capital(trade_log, capital):
     """净利润 / 初始资金，即盈利率"""
-    return total_net_profit(trade_log, capital) / capital * 100
+    return round(total_net_profit(trade_log, capital) / capital * 100, 2)
 
 
 def annual_return_rate(end_equity, capital, start, end):
-    """计算年化单利收益率（annual growth rate）"""
-    B = end_equity
-    A = capital
+    """年化单利收益率（annual return rate）"""
+    profit = end_equity - capital
     n = _difference_in_years(start, end)
-    rate = ((B - A) / A) / n * 100
+    rate = round((profit / capital) / n * 100, 2)
     return rate
 
 
 def annual_compound_return_rate(end_equity, capital, start, end):
-    """计算年化复利收益率（compound annual growth rate）"""
-    B = end_equity
-    A = capital
+    """年化复利收益率（compound annual return rate）"""
     n = _difference_in_years(start, end)
-    compound_rate = (math.pow(B / A, 1 / n) - 1) * 100
-    return compound_rate
+    rate = round((math.pow(end_equity / capital, 1 / n) - 1) * 100, 2)
+    return rate
+
+
+def monthly_return_rate(end_equity, capital, start, end):
+    """月化单利收益率"""
+    n = _difference_in_months(start, end)
+    rate = round(((end_equity - capital) / capital) / n * 100, 2)
+    return rate
+
+
+def monthly_compound_return_rate(end_equity, capital, start, end):
+    """月化复利收益率"""
+    n = _difference_in_months(start, end)
+    rate = round((math.pow(end_equity / capital, 1 / n) - 1) * 100, 2)
+    return rate
 
 
 def trading_period(start, end):
@@ -272,24 +295,63 @@ def pct_time_in_market(ohlc_data, trade_log, start, end):
 
 # -------------------------次数统计---------------------------
 
-def total_num_trades(trade_log):
-    """交易笔数"""
-    return len(trade_log.index)
+def total_num_trades(context):
+    """交易次数，一次平仓算一次交易"""
+    return len(context.fill.realized_gain_and_loss.list)
 
 
-def num_winning_trades(trade_log):
+def num_winning_trades(context):
     """盈利次数"""
-    return (trade_log['re_profit'] > 0).sum()
+    df = context.fill.realized_gain_and_loss.df
+    return len(df[df > 0])
 
 
-def num_losing_trades(trade_log):
+def num_winning_long_trades(context):
+    """多头盈利次数"""
+    df = context.fill.long_realized_gain_and_loss.df
+    return len(df[df > 0])
+
+
+def num_winning_short_trades(context):
+    """空头盈利次数"""
+    df = context.fill.short_realized_gain_and_loss.df
+    return len(df[df > 0])
+
+
+def num_losing_trades(context):
     """亏损次数"""
-    return (trade_log['re_profit'] < 0).sum()
+    df = context.realized_gain_and_loss.df
+    return len(df[df < 0])
 
 
-def num_even_trades(trade_log):
+def num_losing_long_trades(context):
+    """多头亏损次数"""
+    df = context.fill.long_realized_gain_and_loss.df
+    return len(df[df < 0])
+
+
+def num_losing_short_trades(context):
+    """空头亏损次数"""
+    df = context.fill.short_realized_gain_and_loss.df
+    return len(df[df < 0])
+
+
+def num_even_trades(context):
     """持平次数"""
-    return (trade_log['re_profit'] == 0).sum()
+    df = context.realized_gain_and_loss.df
+    return len(df[df == 0])
+
+
+def num_even_long_trades(context):
+    """多头持平次数"""
+    df = context.long_realized_gain_and_loss.df
+    return len(df[df == 0])
+
+
+def num_even_short_trades(context):
+    """空头持平次数"""
+    df = context.short_realized_gain_and_loss.df
+    return len(df[df == 0])
 
 
 def pct_profitable_trades(trade_log):
@@ -798,23 +860,27 @@ def stats(context):
     stats['总盈利'] = gross_profit(trade_log)
     stats['总亏损'] = gross_loss(trade_log)
     stats['盈亏比'] = profit_factor(trade_log)
-    stats['盈利率'] = (
+    stats['盈利率'] = add_pct(
         return_on_initial_capital(trade_log, capital))
     rate = annual_return_rate(equity['equity'][-1], capital, start, end)
-    stats['年化单利收益率'] = rate
+    stats['年化单利收益率'] = add_pct(rate)
     compound_rate = annual_compound_return_rate(equity['equity'][-1], capital, start, end)
-    stats['年化复利收益率'] = compound_rate
+    stats['年化复利收益率'] = add_pct(compound_rate)
     # stats['测试周期数'] = context.test_days
     # stats['pct_time_in_market'] = (
     #     pct_time_in_market(ohlc_data, trade_log, start, end))
     stats['持仓日收益率'] = pct_profit_in_open(equity['equity'][-1], capital, ohlc_data, trade_log)
 
     # 次数统计
-    stats['交易次数'] = total_num_trades(trade_log)
-    stats['盈利次数'] = num_winning_trades(trade_log)
-    stats['亏损次数'] = num_losing_trades(trade_log)
-    stats['持平次数'] = num_even_trades(trade_log)
-    stats['盈利比率'] = pct_profitable_trades(trade_log)
+    stats['交易次数'] = total_num_trades(context)
+    stats['盈利次数'] = [num_winning_trades(context),
+                        num_winning_long_trades(context),
+                        num_winning_short_trades(context)]
+    stats['亏损次数'] = [num_losing_trades(context),
+                        num_losing_long_trades(context),
+                        num_losing_short_trades(context)]
+    stats['持平次数'] = num_even_trades(context)
+    stats['盈利比率'] = pct_profitable_trades(context)
 
     # 盈利与亏损
     stats['avg_profit_per_trade'] = avg_profit_per_trade(trade_log, capital)

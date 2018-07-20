@@ -68,48 +68,58 @@ def create_drawdowns(equity_curve: pd.DataFrame):
     return drawdown
 
 
-def create_trade_log(completed_list, lots):
+def create_trade_log(completed_list, context):
     """
     记录每比交易的明细，包括开仓日期、开仓价格、订单类型、手数、
     平仓日期、平仓价格、执行类型、收益、佣金及总收益等
     """
     trade_log_list = []
-    logger.info('-----------completed_list----------: {}'.format(completed_list))
-    logger.info('len(completed_list): {}'.format(len(completed_list)))
+    logger.debug('-----------completed_list----------: {}'.format(completed_list))
+    logger.debug('len(completed_list): {}'.format(len(completed_list)))
     for i in completed_list:
-        logger.info('i[0]: {}'.format(i[0]))
-        logger.info('i[1]: {}'.format(i[1]))
-        logger.info('-----------i-------------: {}'.format(i))
-        f = i[1]
+        logger.debug('-----------i-------------: {}'.format(i))
 
         d = {}
-        d['entry_date'] = i[0].date
-        d['entry_price'] = i[0].price
-        d['order_type'] = i[0].order_type
-        # logger.info('i[0].date in analysis: {}'.format(i[0].date))
-        # logger.info('i[0].price in analysis: {}'.format(i[0].price))
-        # logger.info('i[0].order_type in analysis: {}'.format(i[0].order_type))
-        # logger.info('i[0].lots in analysis: {}'.format(i[0].lots))
-        # logger.info('i[1].lots in analysis: {}'.format(i[1].lots))
-        d['lots'] = lots
-        d['exit_date'] = i[1].date
-        d['exit_price'] = i[1].price
-        d['pl_points'] = i[1].price - i[0].price
-        d['execute_type'] = i[1].execute_type
-        logger.info('----------d------------: {}'.format(d))
-        d['re_profit'] = (
-            (f.price - i[0].price) * d['lots'] * f.units * i[0].direction)
+        d['date'] = i.date
+        d['price'] = i.price
+        d['order_type'] = i.order_type
+        d['lots'] = context.lots
 
-        comm = f.per_comm * f.units
-        d['commission'] = d['lots'] * comm * f.price * 2  # ???
-        logger.info('----------d------------: {}'.format(d))
+        # position = context.fill.position.df
+        # logger.info('----position----: {}'.format(position))
+        # logger.info('----position----: {}'.format(position.index))
+        position = context.fill.position.df[i.date:i.date].values[0][0]
+        d['position'] = position
+        logger.info('----position----: {} {}'.format(position, type(position)))
+        logger.info('----position----: {}'.format(context.fill.position.df[i.date:i.date]))
+        if position == 0:
+            d['re_profit'] = context.fill.realized_gain_and_loss.df[i.date:i.date].values[0][0]
+            logger.info('---d["re_profit"]---{}'.format(d['re_profit']))
+        else:
+            d['re_profit'] = 0
+        comm = i.per_comm * i.units
+        # d['commission'] = d['lots'] * comm * i.price
+        d['commission'] = context.fill.commission.df[i.date:i.date].values[0][0]
+        d['equity'] = context.fill.equity.df[i.date:i.date].values[0][0]
+        logger.debug('----------d------------: {}'.format(d))
         trade_log_list.append(d)
 
+    logger.debug('----realized_gain_and_loss analysis----: {} {}'.format(
+        context.fill.realized_gain_and_loss.list, context.fill.realized_gain_and_loss.dict))
+    logger.debug('---realized_gain_and_loss analysis---: {}'.format(
+        context.fill.realized_gain_and_loss.df))
     df = pd.DataFrame(trade_log_list)
-    df['cumul_total'] = (df['re_profit'] - df['commission']).cumsum()
-    return df[['entry_date', 'entry_price', 'order_type', 'lots', 'exit_date',
-               'exit_price', 'execute_type', 'pl_points', 're_profit',
-               'commission', 'cumul_total']]
+    # df['cumul_total'] = (df['re_profit'] - df['commission']).cumsum()
+    # logger.info('---equity---: {}'.format(context.fill.equity.df[i.date:i.date]))
+    # df['equity'] = context.fill.equity.df[i.date:i.date]['equity'].values[0]
+    # logger.info('---equity---: {} {}'.format(df['equity'], type(df['equity'])))
+    # return df[['entry_date', 'entry_price', 'order_type', 'lots', 'exit_date',
+    #            'exit_price', 'execute_type', 'pl_points', 're_profit',
+    #            'commission', 'cumul_total']]
+    logger.debug('----------df------------: {}'.format(df))
+    df = df[['date', 'price', 'order_type', 'lots', 'position', 'commission', 're_profit', 'equity']]
+    logger.info('---df["re_profit"]---{} {}'.format(df[df['re_profit'] > 0], type(df['re_profit'])))
+    return df
 
 
 def _difference_in_years(start: pd.Timestamp, end: pd.Timestamp):
@@ -119,15 +129,65 @@ def _difference_in_years(start: pd.Timestamp, end: pd.Timestamp):
     return diff_in_years
 
 
-def _get_trade_bars(ohlc_data, trade_log, op):
+def _get_trade_bars(
+        ohlc_data: pd.DataFrame,
+        trade_log: pd.DataFrame,
+        op: operator) -> list:
     """获取交易日期内的bar数据长度"""
-    ll = []
+    # ll = []
+    # for i in range(len(trade_log.index)):
+    #     if op(trade_log['re_profit'][i], 0):
+    #         entry_date = trade_log['entry_date'][i]  # 待改
+    #         exit_date = trade_log['exit_date'][i]  # 待改
+    #         ll.append(len(ohlc_data[entry_date:exit_date].index))
+    # return ll
+    lenth_bar = []
+    open_date = None
+    position = trade_log['position']
+    position.index = trade_log['date']
     for i in range(len(trade_log.index)):
         if op(trade_log['re_profit'][i], 0):
-            entry_date = trade_log['entry_date'][i]
-            exit_date = trade_log['exit_date'][i]
-            ll.append(len(ohlc_data[entry_date:exit_date].index))
-    return ll
+            logger.info('--position.values[i]: {} {} {} {}'.format(
+                i, position.values, position.values[i], type(int(position.values[i]))))
+            position_ = int(position.values[i])
+            if open_date is None and not position_:  # 无开仓时间且仓位为 0 ，不统计
+                continue
+            if int(position.values[i]):  # position != 0，表示开仓了
+                if not open_date:  # 开仓后不重写开仓时间
+                    logger.info('position.index: {} {}'.format(position.index, position))
+                    open_date = position.index[i]  # 开仓时间
+            else:  # position == 0，表示平仓了
+                close_date = position.index[i]
+                logger.info('--open_date, close_date--: {} {}'.format(open_date, close_date))
+                lenth_bar.append(len(ohlc_data[open_date:close_date].index))
+                open_date = None
+    logger.info('---lenth_bar---: {}'.format(lenth_bar))
+    return lenth_bar
+
+
+# def _get_position_day(ohlc_data: pd.DataFrame, trade_log: pd.DataFrame) -> list:
+#     day_list = []
+#     open_date = None
+#     position = trade_log['position']
+#     for i in range(len(trade_log.index)):
+#         if not open_date and not position.values[i]:
+#             continue
+#         if position.values[i]:
+#             if not open_date:
+#                 open_date = position.index[i].split()[0]
+#             else:
+#                 close_date = position.index[i]
+#                 day_list.append(len(ohlc_data[open_date:close_date].index))
+
+
+def pct_profit_in_open(end_equity, capital, ohlc_data, trade_log):
+    """持仓日收益率，当日只要交易了就算持仓"""
+    position_list = _get_trade_bars(ohlc_data, trade_log, _true_func)
+    position_day = sum(position_list) - len(position_list)  # 日线情况
+    logger.info('---position_day---: {} {} {}'.format(sum(position_list), len(position_list), position_day))
+    profit = end_equity - capital
+    rate = str(profit / position_day * 100) + '%'
+    return rate
 
 
 # -------------------------总体数据---------------------------
@@ -142,10 +202,10 @@ def ending_equity(equity):
     return equity.iloc[-1]['equity']
 
 
-def total_net_profit(trade_log):
+def total_net_profit(trade_log, capital):
     """净利润"""
-    logger.info('---------trade_log---------: {}'.format(trade_log))
-    return trade_log.iloc[-1]['cumul_total']
+    logger.debug('---------trade_log---------: {}'.format(trade_log))
+    return trade_log.iloc[-1]['equity'] - capital
 
 
 def gross_profit(trade_log):
@@ -169,7 +229,7 @@ def profit_factor(trade_log):
 
 def return_on_initial_capital(trade_log, capital):
     """净利润 / 初始资金，即盈利率"""
-    return total_net_profit(trade_log) / capital * 100
+    return total_net_profit(trade_log, capital) / capital * 100
 
 
 def annual_return_rate(end_equity, capital, start, end):
@@ -177,7 +237,7 @@ def annual_return_rate(end_equity, capital, start, end):
     B = end_equity
     A = capital
     n = _difference_in_years(start, end)
-    rate = (B / A) / n * 100
+    rate = ((B - A) / A) / n * 100
     return rate
 
 
@@ -241,11 +301,11 @@ def pct_profitable_trades(trade_log):
 
 # -------------------------盈利与亏损---------------------------
 
-def avg_profit_per_trade(trade_log):
+def avg_profit_per_trade(trade_log, capital):
     """每笔交易平均盈利"""
     if total_num_trades(trade_log) == 0:
         return 0
-    return total_net_profit(trade_log) / total_num_trades(trade_log)
+    return total_net_profit(trade_log, capital) / total_num_trades(trade_log)
 
 
 def avg_profit_per_winning_trade(trade_log):
@@ -288,70 +348,70 @@ def largest_loss_losing_trade(trade_log):
 
 # -------------------------点数---------------------------
 
-def num_winning_points(trade_log):
-    """盈利点数"""
-    if num_winning_trades(trade_log) == 0:
-        return 0
-    return trade_log[trade_log['pl_points'] > 0].sum()['pl_points']
+# def num_winning_points(trade_log):
+#     """盈利点数"""
+#     if num_winning_trades(trade_log) == 0:
+#         return 0
+#     return trade_log[trade_log['pl_points'] > 0].sum()['pl_points']
 
 
-def num_losing_points(trade_log):
-    """亏损点数"""
-    if num_losing_trades(trade_log) == 0:
-        return 0
-    return trade_log[trade_log['pl_points'] < 0].sum()['pl_points']
+# def num_losing_points(trade_log):
+#     """亏损点数"""
+#     if num_losing_trades(trade_log) == 0:
+#         return 0
+#     return trade_log[trade_log['pl_points'] < 0].sum()['pl_points']
 
 
-def total_net_points(trade_log):
-    """盈亏点数"""
-    return num_winning_points(trade_log) + num_losing_points(trade_log)
+# def total_net_points(trade_log):
+#     """盈亏点数"""
+#     return num_winning_points(trade_log) + num_losing_points(trade_log)
 
 
-def avg_points(trade_log):
-    """平均盈亏点数"""
-    if total_num_trades(trade_log) == 0:
-        return 0
-    return trade_log['pl_points'].sum() / len(trade_log.index)
+# def avg_points(trade_log):
+#     """平均盈亏点数"""
+#     if total_num_trades(trade_log) == 0:
+#         return 0
+#     return trade_log['pl_points'].sum() / len(trade_log.index)
 
 
-def largest_points_winning_trade(trade_log):
-    """最大盈利点数"""
-    if num_winning_trades(trade_log) == 0:
-        return 0
-    return trade_log[trade_log['pl_points'] > 0].max()['pl_points']
+# def largest_points_winning_trade(trade_log):
+#     """最大盈利点数"""
+#     if num_winning_trades(trade_log) == 0:
+#         return 0
+#     return trade_log[trade_log['pl_points'] > 0].max()['pl_points']
 
 
-def largest_points_losing_trade(trade_log):
-    """最大亏损点数"""
-    if num_losing_trades(trade_log) == 0:
-        return 0
-    return trade_log[trade_log['pl_points'] < 0].min()['pl_points']
+# def largest_points_losing_trade(trade_log):
+#     """最大亏损点数"""
+#     if num_losing_trades(trade_log) == 0:
+#         return 0
+#     return trade_log[trade_log['pl_points'] < 0].min()['pl_points']
 
 
-def avg_pct_gain_per_trade(trade_log):
-    """"""
-    if total_num_trades(trade_log) == 0:
-        return 0
-    df = trade_log['pl_points'] / trade_log['entry_price']
-    return np.average(df) * 100
+# def avg_pct_gain_per_trade(trade_log):
+#     """"""
+#     if total_num_trades(trade_log) == 0:
+#         return 0
+#     df = trade_log['pl_points'] / trade_log['entry_price']
+#     return np.average(df) * 100
 
 
-def largest_pct_winning_trade(trade_log):
-    """"""
-    if num_winning_trades(trade_log) == 0:
-        return 0
-    df = trade_log[trade_log['pl_points'] > 0]
-    df = df['pl_points'] / df['entry_price']
-    return df.max() * 100
+# def largest_pct_winning_trade(trade_log):
+#     """"""
+#     if num_winning_trades(trade_log) == 0:
+#         return 0
+#     df = trade_log[trade_log['pl_points'] > 0]
+#     df = df['pl_points'] / df['entry_price']
+#     return df.max() * 100
 
 
-def largest_pct_losing_trade(trade_log):
-    """"""
-    if num_losing_trades(trade_log) == 0:
-        return 0
-    df = trade_log[trade_log['pl_points'] < 0]
-    df = df['pl_points'] / df['entry_price']
-    return df.min() * 100
+# def largest_pct_losing_trade(trade_log):
+#     """"""
+#     if num_losing_trades(trade_log) == 0:
+#         return 0
+#     df = trade_log[trade_log['pl_points'] < 0]
+#     df = df['pl_points'] / df['entry_price']
+#     return df.min() * 100
 
 
 # -------------------------连续次数---------------------------
@@ -706,22 +766,24 @@ def sortino_ratio(rets, risk_free=0.00, period=TRADING_DAYS_PER_YEAR):
 
 # -------------------------产生各种统计数据的主要调用函数---------------------------
 
-def stats(ohlc_data, trade_log, equity, start, end, capital):
+def stats(context):
     """
     计算交易后的统计数据
     Parameters：
         trade_log: Dataframe
-            交易日志 (entry_date, entry_price, long_short, qty,
-            exit_date, exit_price, pl_points, re_profit, cumul_total)
+            交易日志 ('date', 'price', 'order_type', 'lots',
+                     'commission', 're_profit', 'equity')
         context: Context object, 全局变量
     Returns：
         stats : 各个统计量的 Series
     """
-    # equity = context.fill.equity.df
-    # start = datetime.strptime(context.start_date, '%Y-%m-%d')
-    # end = datetime.strptime(context.end_date, '%Y-%m-%d')
-    # ohlc_data = context.ohlc_data
-    # capital = context.initial_cash
+    ohlc_data = context.ohlc_data
+    trade_log = context.trade_log
+    equity = context.fill.equity.df
+    start = equity.index[0]
+    end = equity.index[-1]
+    capital = context.initial_cash
+    position = context.fill.position.df
     stats = OrderedDict()
 
     # 总体数据
@@ -732,7 +794,7 @@ def stats(ohlc_data, trade_log, equity, start, end, capital):
     # stats['unrealized_profit'] = (
     #     ending_equity(dbal) - total_net_profit(trade_log) - (
     #         beginning_equity(capital)))
-    stats['净利润'] = total_net_profit(trade_log)
+    stats['净利润'] = total_net_profit(trade_log, capital)
     stats['总盈利'] = gross_profit(trade_log)
     stats['总亏损'] = gross_loss(trade_log)
     stats['盈亏比'] = profit_factor(trade_log)
@@ -743,8 +805,9 @@ def stats(ohlc_data, trade_log, equity, start, end, capital):
     compound_rate = annual_compound_return_rate(equity['equity'][-1], capital, start, end)
     stats['年化复利收益率'] = compound_rate
     # stats['测试周期数'] = context.test_days
-    stats['pct_time_in_market'] = (
-        pct_time_in_market(ohlc_data, trade_log, start, end))
+    # stats['pct_time_in_market'] = (
+    #     pct_time_in_market(ohlc_data, trade_log, start, end))
+    stats['持仓日收益率'] = pct_profit_in_open(equity['equity'][-1], capital, ohlc_data, trade_log)
 
     # 次数统计
     stats['交易次数'] = total_num_trades(trade_log)
@@ -754,7 +817,7 @@ def stats(ohlc_data, trade_log, equity, start, end, capital):
     stats['盈利比率'] = pct_profitable_trades(trade_log)
 
     # 盈利与亏损
-    stats['avg_profit_per_trade'] = avg_profit_per_trade(trade_log)
+    stats['avg_profit_per_trade'] = avg_profit_per_trade(trade_log, capital)
     stats['avg_profit_per_winning_trade'] = (
         avg_profit_per_winning_trade(trade_log))
     stats['avg_loss_per_losing_trade'] = avg_loss_per_losing_trade(trade_log)
@@ -764,17 +827,17 @@ def stats(ohlc_data, trade_log, equity, start, end, capital):
     stats['最大亏损'] = largest_loss_losing_trade(trade_log)
 
     # 点数
-    stats['num_winning_points'] = num_winning_points(trade_log)
-    stats['num_losing_points'] = num_losing_points(trade_log)
-    stats['total_net_points'] = total_net_points(trade_log)
-    stats['avg_points'] = avg_points(trade_log)
-    stats['largest_points_winning_trade'] = (
-        largest_points_winning_trade(trade_log))
-    stats['largest_points_losing_trade'] = (
-        largest_points_losing_trade(trade_log))
-    stats['avg_pct_gain_per_trade'] = avg_pct_gain_per_trade(trade_log)
-    stats['largest_pct_winning_trade'] = largest_pct_winning_trade(trade_log)
-    stats['largest_pct_losing_trade'] = largest_pct_losing_trade(trade_log)
+    # stats['num_winning_points'] = num_winning_points(trade_log)
+    # stats['num_losing_points'] = num_losing_points(trade_log)
+    # stats['total_net_points'] = total_net_points(trade_log)
+    # stats['avg_points'] = avg_points(trade_log)
+    # stats['largest_points_winning_trade'] = (
+    #     largest_points_winning_trade(trade_log))
+    # stats['largest_points_losing_trade'] = (
+    #     largest_points_losing_trade(trade_log))
+    # stats['avg_pct_gain_per_trade'] = avg_pct_gain_per_trade(trade_log)
+    # stats['largest_pct_winning_trade'] = largest_pct_winning_trade(trade_log)
+    # stats['largest_pct_losing_trade'] = largest_pct_losing_trade(trade_log)
 
     # 连续次数
     stats['max_consecutive_winning_trades'] = (
@@ -789,7 +852,8 @@ def stats(ohlc_data, trade_log, equity, start, end, capital):
     dd = max_closed_out_drawdown(equity['equity'])
     logger.info('-----dd["start_date"]-------: {}'.format(dd['start_date']))  # 2013-07-03 00:00:00
     logger.info('-----type of dd["start_date"]-------: {}'.format(type(dd['start_date'])))  # str
-    logger.debug('-----dd["start_date"].strptime-------: {}'.format(datetime.strptime(dd['start_date'], "%Y-%m-%d %H:%M:%S")))
+    logger.debug('-----dd["start_date"].strptime-------: {}'.format(
+        datetime.strptime(dd['start_date'], "%Y-%m-%d %H:%M:%S")))
     stats['max_closed_out_drawdown'] = dd['max']
     stats['max_closed_out_drawdown_start_date'] = dd['start_date']
     stats['max_closed_out_drawdown_end_date'] = dd['end_date']

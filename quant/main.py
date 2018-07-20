@@ -355,6 +355,8 @@ class Quant(object):
         trade_log.to_csv(date + '_trade_log.csv')
         self.context.trade_log = trade_log
         logger.info('------trade_log-----: {}'.format(trade_log))
+        logger.info('------context.fill-----: {}'.format(
+            self.context.fill.long_realized_gain_and_loss.df))
         trade_log.reset_index(drop=True, inplace=True)
         analysis = stats(self.context)
         analysis_table = dict_to_table(analysis)

@@ -225,8 +225,8 @@ class BacktestFill(FillBase):
         equity = self.equity[-1]
         logger.info('equity1 in date in update_equity: {} {}'.format(equity, fill_event.date))
         logger.info('realized_gain_and_loss in update_equity: {}'.format(self.realized_gain_and_loss.list))
-        # total_re_profit = sum(self.realized_gain_and_loss.list)
-        total_re_profit = self.realized_gain_and_loss.list[-1]
+        total_re_profit = sum(self.realized_gain_and_loss.list)
+        # total_re_profit = self.realized_gain_and_loss.list[-1]
         logger.info('total_re_profit in date in update_equity: {} {}'.format(total_re_profit, fill_event.date))
         logger.info('self.realized_gain_and_loss.list: {}'.format(
             self.realized_gain_and_loss.list))
@@ -444,12 +444,16 @@ class BacktestFill(FillBase):
         def get_re_profit(trade_units):
             """计算平仓盈亏和手续费"""
             re_profit = np.round((f.price - i.price) * trade_units * f.units * i.direction, 2)
-            logger.info('re_profit: {} {} {} {} {} {}'.format(re_profit, f.price, i.price, trade_units, f.units, i. direction))
+            logger.info('re_profit: {} {} {} {} {} {}'.format(
+                re_profit, f.price, i.price, trade_units, f.units, i. direction))
             commission_ = np.round(f.units * f.price * f.per_comm * f.lots, 2)
             commission = commission_ + np.round(i.units * i.price * f.per_comm * i.lots, 2)
             re_profit_list.append(re_profit)
             # 加入累计的盈亏
-            self.realized_gain_and_loss.add(f.date, sum(re_profit_list))
+            # self.realized_gain_and_loss.add(f.date, sum(re_profit_list))
+            self.realized_gain_and_loss.add(f.date, re_profit)  # 记录每次盈亏
+            logger.info('---self.realized_gain_and_loss.add---: {} {}'.format(
+                self.realized_gain_and_loss.list, self.realized_gain_and_loss.dict))
             if i.direction > 0:  # 多头平仓盈亏
                 self.realized_gain_and_loss.long_poisition_re_profit.append(re_profit - commission)
                 self.long_realized_gain_and_loss.add(f.date, re_profit - commission)
@@ -475,7 +479,9 @@ class BacktestFill(FillBase):
             for i in self._trade_list:
                 if f.order.parent is i:  # 找到父类，删除原空单，计算利润
                     self._trade_list.remove(i)
-                    self._completed_list.append((copy(i), copy(f)))
+                    # self._completed_list.append((copy(i), copy(f)))
+                    self._completed_list.append(copy(i))
+                    self._completed_list.append(copy(f))
                     f.lots = 0
 
         else:
@@ -489,7 +495,9 @@ class BacktestFill(FillBase):
                         if i.lots > f.lots:  # 空单大于多单，剩余空单
                             index_i = self._trade_list.index(i)
                             self._trade_list.pop(index_i)  # 删除原空单
-                            self._completed_list.append((copy(i), copy(f)))
+                            # self._completed_list.append((copy(i), copy(f)))
+                            self._completed_list.append(copy(i))
+                            self._completed_list.append(copy(f))
                             i.lots -= f.lots  # 修改抵消后剩余的空单
                             get_re_profit(f.lots)  # 用执行交易的部分计算利润
                             f.lots = 0  # 没有多单了，单位设为0
@@ -500,7 +508,9 @@ class BacktestFill(FillBase):
 
                         elif i.lots <= f.lots:  # 空单小于多单，抵消后删除空单
                             self._trade_list.remove(i)
-                            self._completed_list.append((copy(i), copy(f)))
+                            # self._completed_list.append((copy(i), copy(f)))
+                            self._completed_list.append(copy(i))
+                            self._completed_list.append(copy(f))
                             get_re_profit(i.lots)  # 用执行交易的部分计算利润
                             f.lots -= i.lots  # 修改多单仓位，若为0，后面会删除
 
@@ -514,7 +524,9 @@ class BacktestFill(FillBase):
                         if i.lots > f.lots:  # 多单大于空单，剩余多单
                             index_i = self._trade_list.index(i)
                             self._trade_list.pop(index_i)  # 删除原多单
-                            self._completed_list.append((copy(i), copy(f)))
+                            # self._completed_list.append((copy(i), copy(f)))
+                            self._completed_list.append(copy(i))
+                            self._completed_list.append(copy(f))
                             i.lots -= f.lots  # 修改抵消后剩余的多单
                             get_re_profit(f.lots)  # 用执行交易的部分计算利润
                             f.lots = 0  # 没有空单了，单位设为0
@@ -525,7 +537,9 @@ class BacktestFill(FillBase):
 
                         elif i.lots <= f.lots:  # 多单小于空单，抵消后删除多单
                             self._trade_list.remove(i)
-                            self._completed_list.append((copy(i), copy(f)))
+                            # self._completed_list.append((copy(i), copy(f)))
+                            self._completed_list.append(copy(i))
+                            self._completed_list.append(copy(f))
                             get_re_profit(i.lots)  # 用执行交易的部分计算利润
                             f.lots -= i.lots  # 修改空单仓位，若为0，后面会删除
 

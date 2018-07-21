@@ -144,7 +144,10 @@ def _get_trade_bars(
         ohlc_data: pd.DataFrame,
         trade_log: pd.DataFrame,
         op: operator) -> list:
-    """获取交易日期内的bar数据长度"""
+    """
+    获取交易日期内的 bar 数据长度列表，
+    每一个值代表一次交易的持续周期，单位为 bar
+    """
     # ll = []
     # for i in range(len(trade_log.index)):
     #     if op(trade_log['re_profit'][i], 0):
@@ -156,6 +159,9 @@ def _get_trade_bars(
     open_date = None
     position = trade_log['position']
     position.index = trade_log['date']
+    logger.info('---position in _get_trade_bars---: {}'.format(position))
+    logger.info('---trade_log[re_profit]: {}'.format(trade_log['re_profit']))
+    logger.info('---trade_log[re_profit]: {}'.format(trade_log['re_profit'][0]))
     for i in range(len(trade_log.index)):
         if op(trade_log['re_profit'][i], 0):
             logger.info('--position.values[i]: {} {} {} {}'.format(
@@ -195,7 +201,7 @@ def _get_trade_bars(
 def pct_profit_in_open(end_equity, capital, ohlc_data, trade_log):
     """持仓日年化收益率，当日只要交易了就算持仓"""
     position_list = _get_trade_bars(ohlc_data, trade_log, _true_func)
-    position_day = sum(position_list) - len(position_list)  # 日线情况
+    position_day = sum(position_list) - len(position_list)  # 日线持仓情况
     logger.info('---position_day---: {} {} {}'.format(sum(position_list), len(position_list), position_day))
     profit = end_equity - capital
     rate = profit / (position_day / 365)
@@ -214,60 +220,66 @@ def ending_equity(equity):
     return round(equity.iloc[-1]['equity'], 2)
 
 
-def total_net_profit(trade_log, capital):
+def total_net_profit(equity, capital):
     """净利润"""
-    logger.debug('---------trade_log---------: {}'.format(trade_log))
-    return round(trade_log.iloc[-1]['equity'] - capital, 2)
+    logger.info('--total_net_profit--:{} {}'.format(equity.iloc[-1], equity.iloc[-1]['equity']))
+    return round(equity.iloc[-1]['equity'] - capital, 2)
 
 
 def gross_profit(trade_log):
     """总盈利"""
-    return round(trade_log[trade_log['re_profit'] > 0].sum()['re_profit'], 2)
+    logger.info('---gross_profit---: {}'.format(trade_log[trade_log['re_profit'] > 0]['re_profit'].sum()))
+    return round(trade_log[trade_log['re_profit'] > 0]['re_profit'].sum(), 2)
 
 
 def gross_loss(trade_log):
-    """总亏损"""
-    return round(trade_log[trade_log['re_profit'] < 0].sum()['re_profit'], 2)
+    """总亏损，返回正值"""
+    logger.info('---gross_loss---: {}'.format((-1) * trade_log[trade_log['re_profit'] < 0]['re_profit'].sum()))
+    return round((-1) * trade_log[trade_log['re_profit'] < 0].sum()['re_profit'], 2)
 
 
 def profit_factor(trade_log):
-    """总盈利 / 总亏损"""
+    """总盈利 / 总亏损，即盈亏比，总亏损为 0 时，返回 +0"""
     if gross_profit(trade_log) == 0:
         return 0
-    if gross_loss(trade_log) == 0:
-        return 1000
-    return round(gross_profit(trade_log) / gross_loss(trade_log) * (-1), 2)
+    if gross_loss(trade_log) == 0:  # 无亏损的情况
+        return '+0'
+    return round(gross_profit(trade_log) / gross_loss(trade_log), 2)
 
 
-def return_on_initial_capital(trade_log, capital):
+def return_rate(trade_log, capital):
     """净利润 / 初始资金，即盈利率"""
     return round(total_net_profit(trade_log, capital) / capital * 100, 2)
 
 
-def annual_return_rate(end_equity, capital, start, end):
+def annual_return_rate(equity, capital, start, end):
     """年化单利收益率（annual return rate）"""
+    end_equity = equity['equity'][-1]
     profit = end_equity - capital
     n = _difference_in_years(start, end)
     rate = round((profit / capital) / n * 100, 2)
     return rate
 
 
-def annual_compound_return_rate(end_equity, capital, start, end):
+def annual_compound_return_rate(equity, capital, start, end):
     """年化复利收益率（compound annual return rate）"""
+    end_equity = equity['equity'][-1]
     n = _difference_in_years(start, end)
     rate = round((math.pow(end_equity / capital, 1 / n) - 1) * 100, 2)
     return rate
 
 
-def monthly_return_rate(end_equity, capital, start, end):
+def monthly_return_rate(equity, capital, start, end):
     """月化单利收益率"""
+    end_equity = equity['equity'][-1]
     n = _difference_in_months(start, end)
     rate = round(((end_equity - capital) / capital) / n * 100, 2)
     return rate
 
 
-def monthly_compound_return_rate(end_equity, capital, start, end):
+def monthly_compound_return_rate(equity, capital, start, end):
     """月化复利收益率"""
+    end_equity = equity['equity'][-1]
     n = _difference_in_months(start, end)
     rate = round((math.pow(end_equity / capital, 1 / n) - 1) * 100, 2)
     return rate
@@ -276,8 +288,14 @@ def monthly_compound_return_rate(end_equity, capital, start, end):
 def trading_period(start, end):
     """交易周期"""
     diff = relativedelta(end, start)  # 计算日期差
-    return '{} years {} months {} days'.format(diff.years, diff.months,
-                                               diff.days)
+    return '{} years {} months {} days'.format(diff.years, diff.months, diff.days)
+
+
+def initial_cash_rate(context, capital):
+    """初始资金比例"""
+    margin = context.fill.margin.df
+    first_margin = margin[margin > 0][0]
+    rate = np.round(first_margin / capital * 100, 2)
 
 
 def _true_func(arg1, arg2):
@@ -320,7 +338,7 @@ def num_winning_short_trades(context):
 
 def num_losing_trades(context):
     """亏损次数"""
-    df = context.realized_gain_and_loss.df
+    df = context.fill.realized_gain_and_loss.df
     return len(df[df < 0])
 
 
@@ -338,19 +356,19 @@ def num_losing_short_trades(context):
 
 def num_even_trades(context):
     """持平次数"""
-    df = context.realized_gain_and_loss.df
+    df = context.fill.realized_gain_and_loss.df
     return len(df[df == 0])
 
 
 def num_even_long_trades(context):
     """多头持平次数"""
-    df = context.long_realized_gain_and_loss.df
+    df = context.fill.long_realized_gain_and_loss.df
     return len(df[df == 0])
 
 
 def num_even_short_trades(context):
     """空头持平次数"""
-    df = context.short_realized_gain_and_loss.df
+    df = context.fill.short_realized_gain_and_loss.df
     return len(df[df == 0])
 
 
@@ -841,6 +859,9 @@ def stats(context):
     """
     ohlc_data = context.ohlc_data
     trade_log = context.trade_log
+    logger.info('---trade_log.re_profit---{}'.format(trade_log['re_profit']))
+    # trade_log = trade_log[trade_log['position'] == 0].reset_index(drop=True)  # 取平仓交易记录
+    logger.info('---trade_log in analysis---: {}'.format(trade_log))
     equity = context.fill.equity.df
     start = equity.index[0]
     end = equity.index[-1]
@@ -849,30 +870,34 @@ def stats(context):
     stats = OrderedDict()
 
     # 总体数据
+    stats['测试天数'] = (end - start).days
+    stats['测试周期数'] = context.count
     stats['测试开始时间'] = start.strftime("%Y-%m-%d %H:%M:%S")
     stats['测试结束时间'] = end.strftime("%Y-%m-%d %H:%M:%S")
+    stats['指令总数'] = len(context.fill.completed_list)
     stats['初始资金'] = beginning_equity(capital)
     stats['最终权益'] = ending_equity(equity)
+    stats['初始资金比例'] = 0
     # stats['unrealized_profit'] = (
     #     ending_equity(dbal) - total_net_profit(trade_log) - (
     #         beginning_equity(capital)))
-    stats['净利润'] = total_net_profit(trade_log, capital)
+    stats['净利润'] = total_net_profit(equity, capital)
     stats['总盈利'] = gross_profit(trade_log)
     stats['总亏损'] = gross_loss(trade_log)
     stats['盈亏比'] = profit_factor(trade_log)
     stats['盈利率'] = add_pct(
-        return_on_initial_capital(trade_log, capital))
-    rate = annual_return_rate(equity['equity'][-1], capital, start, end)
+        return_rate(trade_log, capital))
+    rate = annual_return_rate(equity, capital, start, end)
     stats['年化单利收益率'] = add_pct(rate)
-    compound_rate = annual_compound_return_rate(equity['equity'][-1], capital, start, end)
+    compound_rate = annual_compound_return_rate(equity, capital, start, end)
     stats['年化复利收益率'] = add_pct(compound_rate)
     # stats['测试周期数'] = context.test_days
     # stats['pct_time_in_market'] = (
     #     pct_time_in_market(ohlc_data, trade_log, start, end))
-    stats['持仓日收益率'] = pct_profit_in_open(equity['equity'][-1], capital, ohlc_data, trade_log)
+    stats['持仓日收益率'] = pct_profit_in_open(equity, capital, ohlc_data, trade_log)
 
     # 次数统计
-    stats['交易次数'] = total_num_trades(context)
+    stats['交易次数'] = total_num_trades(trade_log)
     stats['盈利次数'] = [num_winning_trades(context),
                         num_winning_long_trades(context),
                         num_winning_short_trades(context)]

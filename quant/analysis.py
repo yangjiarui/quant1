@@ -148,20 +148,13 @@ def _get_trade_bars(
     获取交易日期内的 bar 数据长度列表，
     每一个值代表一次交易的持续周期，单位为 bar
     """
-    # ll = []
-    # for i in range(len(trade_log.index)):
-    #     if op(trade_log['re_profit'][i], 0):
-    #         entry_date = trade_log['entry_date'][i]  # 待改
-    #         exit_date = trade_log['exit_date'][i]  # 待改
-    #         ll.append(len(ohlc_data[entry_date:exit_date].index))
-    # return ll
     lenth_bar = []
     open_date = None
     position = trade_log['position']
     position.index = trade_log['date']
-    logger.info('---position in _get_trade_bars---: {}'.format(position))
-    logger.info('---trade_log[re_profit]: {}'.format(trade_log['re_profit']))
-    logger.info('---trade_log[re_profit]: {}'.format(trade_log['re_profit'][0]))
+    # logger.info('---position in _get_trade_bars---: {}'.format(position))
+    # logger.info('---trade_log[re_profit]: {}'.format(trade_log['re_profit']))
+    # logger.info('---trade_log[re_profit]: {}'.format(trade_log['re_profit'][0]))
     for i in range(len(trade_log.index)):
         if op(trade_log['re_profit'][i], 0):
             logger.info('--position.values[i]: {} {} {} {}'.format(
@@ -247,9 +240,9 @@ def profit_factor(trade_log):
     return round(gross_profit(trade_log) / gross_loss(trade_log), 2)
 
 
-def return_rate(trade_log, capital):
+def return_rate(equity, capital):
     """净利润 / 初始资金，即盈利率"""
-    return round(total_net_profit(trade_log, capital) / capital * 100, 2)
+    return round(total_net_profit(equity, capital) / capital * 100, 2)
 
 
 def annual_return_rate(equity, capital, start, end):
@@ -313,7 +306,7 @@ def pct_time_in_market(ohlc_data, trade_log, start, end):
 
 # -------------------------次数统计---------------------------
 
-def total_num_trades(context):
+def num_total_trades(context):
     """交易次数，一次平仓算一次交易"""
     return len(context.fill.realized_gain_and_loss.list)
 
@@ -372,20 +365,30 @@ def num_even_short_trades(context):
     return len(df[df == 0])
 
 
-def pct_profitable_trades(trade_log):
-    """盈利比率"""
-    if total_num_trades(trade_log) == 0:
+def profitable_trades_rate(context):
+    """盈利比率，盈利比率=盈利次数次数/总交易次数"""
+    if num_total_trades(context) == 0:
         return 0
-    return num_winning_trades(trade_log) / total_num_trades(trade_log) * 100
+    return num_winning_trades(context) / num_total_trades(context)
+
+
+def winning_rate(context):
+    """胜率，胜率=非亏损次数/总交易次数"""
+    if num_total_trades(context) == 0:
+        return 0
+    num = num_total_trades(context) - num_losing_trades(context)
+    return num / num_total_trades(context)
 
 
 # -------------------------盈利与亏损---------------------------
 
-def avg_profit_per_trade(trade_log, capital):
+def avg_profit_per_trade(context):
     """每笔交易平均盈利"""
-    if total_num_trades(trade_log) == 0:
+    equity = context.fill.equity.df
+    capital = context.initial_cash
+    if num_total_trades(context) == 0:
         return 0
-    return total_net_profit(trade_log, capital) / total_num_trades(trade_log)
+    return total_net_profit(equity, capital) / num_total_trades(context)
 
 
 def avg_profit_per_winning_trade(trade_log):
@@ -897,7 +900,7 @@ def stats(context):
     stats['持仓日收益率'] = pct_profit_in_open(equity, capital, ohlc_data, trade_log)
 
     # 次数统计
-    stats['交易次数'] = total_num_trades(trade_log)
+    stats['交易次数'] = num_total_trades(context)
     stats['盈利次数'] = [num_winning_trades(context),
                         num_winning_long_trades(context),
                         num_winning_short_trades(context)]
@@ -905,7 +908,8 @@ def stats(context):
                         num_losing_long_trades(context),
                         num_losing_short_trades(context)]
     stats['持平次数'] = num_even_trades(context)
-    stats['盈利比率'] = pct_profitable_trades(context)
+    stats['盈利比率'] = profitable_trades_rate(context)
+    stats['胜率'] = winning_rate(context)
 
     # 盈利与亏损
     stats['avg_profit_per_trade'] = avg_profit_per_trade(trade_log, capital)
@@ -1000,8 +1004,8 @@ def stats(context):
     stats['weekly_std'] = pc.std()
 
     # 比率
-    stats['sharpe_ratio'] = sharpe_ratio(equity['equity'].pct_change())
-    stats['sortino_ratio'] = sortino_ratio(equity['equity'].pct_change())
+    stats['夏普比率'] = sharpe_ratio(equity['equity'].pct_change())
+    stats['索提诺比率'] = sortino_ratio(equity['equity'].pct_change())
 
     for i, j in stats.items():
         if type(j) is not str:

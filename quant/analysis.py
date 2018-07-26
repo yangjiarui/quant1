@@ -152,23 +152,25 @@ def _get_trade_bars(
     open_date = None
     position = trade_log['position']
     position.index = trade_log['date']
-    # logger.info('---position in _get_trade_bars---: {}'.format(position))
-    # logger.info('---trade_log[re_profit]: {}'.format(trade_log['re_profit']))
-    # logger.info('---trade_log[re_profit]: {}'.format(trade_log['re_profit'][0]))
+    logger.debug('---ohlc_data.head(30)---: {}'.format(ohlc_data.head(30)))
+    logger.debug('---ohlc_data.head(10)---: {}'.format(ohlc_data.head(10)))
+    logger.debug('---ohlc_data.head(40)---: {}'.format(ohlc_data.head(40)))
+    logger.debug('---trade_log in trade bar---: {}'.format(trade_log))
     for i in range(len(trade_log.index)):
         if op(trade_log['re_profit'][i], 0):
-            logger.info('--position.values[i]: {} {} {} {}'.format(
+            logger.debug('--position.values[i]: {} {} {} {}'.format(
                 i, position.values, position.values[i], type(int(position.values[i]))))
             position_ = int(position.values[i])
             if open_date is None and not position_:  # 无开仓时间且仓位为 0 ，不统计
                 continue
             if int(position.values[i]):  # position != 0，表示开仓了
                 if not open_date:  # 开仓后不重写开仓时间
-                    logger.info('position.index: {} {}'.format(position.index, position))
+                    logger.debug('position.index: {} {}'.format(position.index, position))
                     open_date = position.index[i]  # 开仓时间
             else:  # position == 0，表示平仓了
                 close_date = position.index[i]
                 logger.info('--open_date, close_date--: {} {}'.format(open_date, close_date))
+                logger.info('---ohlc_data: {}'.format(ohlc_data[open_date:close_date]))
                 lenth_bar.append(len(ohlc_data[open_date:close_date].index))
                 open_date = None
     logger.info('---lenth_bar---: {}'.format(lenth_bar))
@@ -193,12 +195,41 @@ def _get_trade_bars(
 # -------------------------自定义数据---------------------------
 def pct_profit_in_open(end_equity, capital, ohlc_data, trade_log):
     """持仓日年化收益率，当日只要交易了就算持仓"""
+    logger.debug('---end_equity,,,---: {} {} {} {}'.format(
+        end_equity, capital, ohlc_data.head(), trade_log))
     position_list = _get_trade_bars(ohlc_data, trade_log, _true_func)
     position_day = sum(position_list) - len(position_list)  # 日线持仓情况
+    logger.debug('---position_list---: {}'.format(position_list))
     logger.info('---position_day---: {} {} {}'.format(sum(position_list), len(position_list), position_day))
     profit = end_equity - capital
-    rate = profit / (position_day / 365)
+    rate = (profit / capital) / (position_day / 365)
     return round(rate, 2)
+
+
+def duration_of_equity_not_reaching_high(equity):
+    """权益最长未创新高的持续时间"""
+    # equity = context.fill.equity.df
+    logger.info('---equity in analysis---: {}'.format(equity))
+    max_equity = 0
+    duration = pd.Timedelta(0)  # 时间间隔为 0
+    date_list = []
+    date_dict = {}
+    for i in range(len(equity.values)):
+        if max_equity < equity.values[i][0]:
+            max_equity = equity.values[i][0]
+            date_list.append(equity.index[i])
+    logger.info('---date_list---: {}'.format(date_list))
+    for i in range(len(date_list) - 1):
+        duration_ = date_list[i + 1] - date_list[i]
+        if duration < duration_:
+            duration = duration_
+            date_dict[duration] = [date_list[i], date_list[i + 1]]
+    # date = date_dict[max(date_dict)][0] + '-' + date_dict[max(date_dict)][1]
+    start_date = datetime.strftime(date_dict[max(date_dict)][0], '%Y/%m/%d')
+    end_date = datetime.strftime(date_dict[max(date_dict)][1], '%Y/%m/%d')
+    date = start_date + ' - ' + end_date
+    logger.info('---date in analysis---: {}'.format(date))
+    return date
 
 
 # -------------------------总体数据---------------------------
@@ -289,6 +320,8 @@ def initial_cash_rate(context, capital):
     margin = context.fill.margin.df
     first_margin = margin[margin > 0][0]
     rate = np.round(first_margin / capital * 100, 2)
+    logger.info('---initial_cash_rate---:{}'.format(rate))
+    return rate
 
 
 def _true_func(arg1, arg2):
@@ -382,37 +415,110 @@ def winning_rate(context):
 
 # -------------------------盈利与亏损---------------------------
 
+def long_profit_per_winning_trade(context):
+    """平均每笔多头盈利交易的盈利"""
+    n = num_total_trades(context)
+    if n == 0:
+        return 0
+    df = context.fill.long_realized_gain_and_loss.df
+    return round(df[df > 0].sum() / n, 2)
+
+
+def long_profit_per_losing_trade(context):
+    """平均每笔多头亏损交易的亏损"""
+    n = num_total_trades(context)
+    if n == 0:
+        return 0
+    df = context.fill.long_realized_gain_and_loss.df
+    return round(df[df < 0].sum() / n, 2)
+
+
+def short_profit_per_winning_trade(context):
+    """平均每笔空头盈利交易的盈利"""
+    n = num_total_trades(context)
+    if n == 0:
+        return 0
+    df = context.fill.short_realized_gain_and_loss.df
+    return round(df[df > 0].sum() / n, 2)
+
+
+def short_profit_per_losing_trade(context):
+    """平均每笔空头亏损交易的亏损"""
+    n = num_total_trades(context)
+    if n == 0:
+        return 0
+    df = context.fill.short_realized_gain_and_loss.df
+    return round(df[df < 0].sum() / n, 2)
+
+
+def long_profit_per_trade(context):
+    """平均每笔多头交易的盈亏"""
+    n = num_total_trades(context)
+    if n == 0:
+        return 0
+    df = context.fill.long_realized_gain_and_loss.df
+    return round(df.sum() / n, 2)
+
+
+def short_profit_per_trade(context):
+    """平均每笔空头交易的盈亏"""
+    n = num_total_trades(context)
+    if n == 0:
+        return 0
+    df = context.fill.short_realized_gain_and_loss.df
+    return round(df.sum() / n, 2)
+
+
+def avg_profit_per_winning_trade(context):
+    """平均每笔盈利交易的盈利"""
+    n = num_winning_trades(context)
+    if n == 0:
+        return 0
+    profit = gross_profit(context.trade_log)
+    return round(profit / n, 2)
+
+
+def avg_loss_per_losing_trade(context):
+    """平均每笔亏损交易的亏损"""
+    n = num_losing_trades(context)
+    if n == 0:
+        return 0
+    loss = gross_loss(context.trade_log)
+    return round(loss / n, 2)
+
+
 def avg_profit_per_trade(context):
-    """每笔交易平均盈利"""
+    """每笔交易平均盈亏"""
     equity = context.fill.equity.df
     capital = context.initial_cash
-    if num_total_trades(context) == 0:
+    n = num_total_trades(context)
+    if n == 0:
         return 0
-    return total_net_profit(equity, capital) / num_total_trades(context)
+    return round(total_net_profit(equity, capital) / n, 2)
 
 
-def avg_profit_per_winning_trade(trade_log):
-    """每笔盈利交易的平均盈利"""
-    if num_winning_trades(trade_log) == 0:
-        return 0
-    return gross_profit(trade_log) / num_winning_trades(trade_log)
+# def avg_profit_per_winning_trade(trade_log):
+#     """每笔盈利交易的平均盈利"""
+#     if num_winning_trades(trade_log) == 0:
+#         return 0
+#     return gross_profit(trade_log) / num_winning_trades(trade_log)
 
 
-def avg_loss_per_losing_trade(trade_log):
-    """每笔交易平均亏损"""
-    if num_losing_trades(trade_log) == 0:
-        return 0
-    return gross_loss(trade_log) / num_losing_trades(trade_log)
+# def avg_loss_per_losing_trade(trade_log):
+#     """每笔交易平均亏损"""
+#     if num_losing_trades(trade_log) == 0:
+#         return 0
+#     return gross_loss(trade_log) / num_losing_trades(trade_log)
 
 
-def ratio_avg_profit_win_loss(trade_log):
-    """每笔亏损交易的平均亏损"""
-    if avg_profit_per_winning_trade(trade_log) == 0:
-        return 0
-    if avg_loss_per_losing_trade(trade_log) == 0:
-        return 1000
-    return (avg_profit_per_winning_trade(trade_log) /
-            avg_loss_per_losing_trade(trade_log) * (-1))
+# def ratio_avg_profit_win_loss(trade_log):
+#     """每笔亏损交易的平均亏损"""
+#     if avg_profit_per_winning_trade(trade_log) == 0:
+#         return 0
+#     if avg_loss_per_losing_trade(trade_log) == 0:
+#         return 1000
+#     return (avg_profit_per_winning_trade(trade_log) /
+#             avg_loss_per_losing_trade(trade_log) * (-1))
 
 
 def largest_profit_winning_trade(trade_log):
@@ -898,6 +1004,7 @@ def stats(context):
     # stats['pct_time_in_market'] = (
     #     pct_time_in_market(ohlc_data, trade_log, start, end))
     stats['持仓日收益率'] = pct_profit_in_open(equity, capital, ohlc_data, trade_log)
+    stats['权益最长未创新高的持续时间'] = duration_of_equity_not_reaching_high(equity)
 
     # 次数统计
     stats['交易次数'] = num_total_trades(context)

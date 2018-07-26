@@ -333,6 +333,8 @@ class Quant(object):
         """输出详细的结果分析"""
         logger.info('-----get_analysis-----')
         ohlc_data = self.feed_list[0].bar.df
+        ohlc_data = ohlc_data.drop(len(ohlc_data) - 1)  # 最后一条数据为重复的数据
+        logger.debug('---feed_list---: {} {}'.format(self.feed_list, self.feed_list[0].bar))
         ohlc_data.set_index('time', inplace=True)  # 设立新索引
         ohlc_data.index = pd.DatetimeIndex(ohlc_data.index)  # 将新索引转换为 DatetimeIndex
         logger.debug('------ohlc_data.index------: {}'.format(ohlc_data.index))
@@ -342,12 +344,12 @@ class Quant(object):
         dbal = self.fill.equity.df  # 权益
         start = dbal.index[0]  # 开始日期
         end = dbal.index[-1]  # 结束日期
-        logger.info('----start----: {}'.format(start))
-        logger.info('----end----: {}'.format(end))
-        logger.info('----type of end----: {}'.format(type(end)))
-        logger.info('----context.start_date----: {}'.format(self.context.start_date))
-        logger.info('----context.end_date----: {}'.format(self.context.end_date))
-        logger.info('----type of context.end_date----: {}'.format(type(self.context.end_date)))
+        logger.debug('----start----: {}'.format(start))
+        logger.debug('----end----: {}'.format(end))
+        logger.debug('----type of end----: {}'.format(type(end)))
+        logger.debug('----context.start_date----: {}'.format(self.context.start_date))
+        logger.debug('----context.end_date----: {}'.format(self.context.end_date))
+        logger.debug('----type of context.end_date----: {}'.format(type(self.context.end_date)))
         # capital = self.fill.initial_cash  # 初始资金
         trade_log = self.get_trade_log(instrument)
         # logger.info('------trade_log-----: {}'.format(trade_log))
@@ -355,7 +357,7 @@ class Quant(object):
         trade_log.to_csv(date + '_trade_log.csv')
         self.context.trade_log = trade_log
         logger.info('------trade_log-----: {}'.format(trade_log))
-        logger.info('------context.fill-----: {}'.format(
+        logger.debug('------context.fill-----: {}'.format(
             self.context.fill.long_realized_gain_and_loss.df))
         trade_log.reset_index(drop=True, inplace=True)
         analysis = stats(self.context)

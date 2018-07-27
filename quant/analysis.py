@@ -250,25 +250,61 @@ def total_net_profit(equity, capital):
     return round(equity.iloc[-1]['equity'] - capital, 2)
 
 
-def gross_profit(trade_log):
+def long_net_profit(context):
+    """净利润（多头）"""
+    df = context.fill.long_realized_gain_and_loss.df
+    return round(df.sum(), 2)
+
+
+def short_net_profit(context):
+    """净利润（空头）"""
+    df = context.fill.short_realized_gain_and_loss.df
+    return round(df.sum(), 2)
+
+
+def gross_profit(context):
     """总盈利"""
-    logger.info('---gross_profit---: {}'.format(trade_log[trade_log['re_profit'] > 0]['re_profit'].sum()))
-    return round(trade_log[trade_log['re_profit'] > 0]['re_profit'].sum(), 2)
+    df = context.fill.realized_gain_and_loss.df
+    return round(df[df > 0].sum(), 2)
 
 
-def gross_loss(trade_log):
+def gross_long_profit(context):
+    """总盈利(多头)"""
+    df = context.fill.long_realized_gain_and_loss.df
+    return round(df[df > 0].sum(), 2)
+
+
+def gross_short_profit(context):
+    """总盈利(空头)"""
+    df = context.fill.short_realized_gain_and_loss.df
+    return round(df[df > 0].sum(), 2)
+
+
+def gross_loss(context):
     """总亏损，返回正值"""
-    logger.info('---gross_loss---: {}'.format((-1) * trade_log[trade_log['re_profit'] < 0]['re_profit'].sum()))
-    return round((-1) * trade_log[trade_log['re_profit'] < 0].sum()['re_profit'], 2)
+    df = context.fill.realized_gain_and_loss.df
+    return round(-1 * df[df < 0].sum(), 2)
 
 
-def profit_factor(trade_log):
+def gross_long_loss(context):
+    """总亏损（多头）"""
+    df = context.fill.long_realized_gain_and_loss.df
+    return round(-1 * df[df < 0].sum(), 2)
+
+
+def gross_short_loss(context):
+    """总亏损（空头）"""
+    df = context.fill.short_realized_gain_and_loss.df
+    return round(-1 * df[df < 0].sum(), 2)
+
+
+def profit_factor(context):
     """总盈利 / 总亏损，即盈亏比，总亏损为 0 时，返回 +0"""
-    if gross_profit(trade_log) == 0:
+    if gross_profit(context) == 0:
         return 0
-    if gross_loss(trade_log) == 0:  # 无亏损的情况
+    if gross_loss(context) == 0:  # 无亏损的情况
         return '+0'
-    return round(gross_profit(trade_log) / gross_loss(trade_log), 2)
+    return round(gross_profit(context) / gross_loss(context), 2)
 
 
 def return_rate(equity, capital):
@@ -276,8 +312,8 @@ def return_rate(equity, capital):
     return round(total_net_profit(equity, capital) / capital * 100, 2)
 
 
-def annual_return_rate(equity, capital, start, end):
-    """年化单利收益率（annual return rate）"""
+def annualized_return_rate(equity, capital, start, end):
+    """年化单利收益率（annualized return rate）"""
     end_equity = equity['equity'][-1]
     profit = end_equity - capital
     n = _difference_in_years(start, end)
@@ -285,8 +321,8 @@ def annual_return_rate(equity, capital, start, end):
     return rate
 
 
-def annual_compound_return_rate(equity, capital, start, end):
-    """年化复利收益率（compound annual return rate）"""
+def annualized_compound_return_rate(equity, capital, start, end):
+    """年化复利收益率（compound annualized return rate）"""
     end_equity = equity['equity'][-1]
     n = _difference_in_years(start, end)
     rate = round((math.pow(end_equity / capital, 1 / n) - 1) * 100, 2)
@@ -344,6 +380,16 @@ def num_total_trades(context):
     return len(context.fill.realized_gain_and_loss.list)
 
 
+def num_long_trades(context):
+    """多头交易次数"""
+    return len(context.fill.long_realized_gain_and_loss.list)
+
+
+def num_short_trades(context):
+    """空头交易次数"""
+    return len(context.fill.short_realized_gain_and_loss.list)
+
+
 def num_winning_trades(context):
     """盈利次数"""
     df = context.fill.realized_gain_and_loss.df
@@ -398,11 +444,28 @@ def num_even_short_trades(context):
     return len(df[df == 0])
 
 
-def profitable_trades_rate(context):
+def profit_trades_rate(context):
     """盈利比率，盈利比率=盈利次数次数/总交易次数"""
-    if num_total_trades(context) == 0:
+    n = num_total_trades(context)
+    if n == 0:
         return 0
-    return num_winning_trades(context) / num_total_trades(context)
+    return round(num_winning_trades(context) / n * 100, 2)
+
+
+def profit_long_trades_rate(context):
+    """盈利比率（多头）"""
+    n = num_long_trades
+    if n == 0:
+        return 0
+    return round(num_winning_long_trades(context) / n * 100, 2)
+
+
+def profit_short_trades_rate(context):
+    """盈利比率（空头）"""
+    n = num_short_trades(context)
+    if n == 0:
+        return 0
+    return round(num_winning_short_trades(context) / n * 100, 2)
 
 
 def winning_rate(context):
@@ -415,58 +478,16 @@ def winning_rate(context):
 
 # -------------------------盈利与亏损---------------------------
 
-def long_profit_per_winning_trade(context):
-    """平均每笔多头盈利交易的盈利"""
+# 总的盈利与亏损
+
+def avg_profit_per_trade(context):
+    """每笔交易平均盈亏"""
+    equity = context.fill.equity.df
+    capital = context.initial_cash
     n = num_total_trades(context)
     if n == 0:
         return 0
-    df = context.fill.long_realized_gain_and_loss.df
-    return round(df[df > 0].sum() / n, 2)
-
-
-def long_profit_per_losing_trade(context):
-    """平均每笔多头亏损交易的亏损"""
-    n = num_total_trades(context)
-    if n == 0:
-        return 0
-    df = context.fill.long_realized_gain_and_loss.df
-    return round(df[df < 0].sum() / n, 2)
-
-
-def short_profit_per_winning_trade(context):
-    """平均每笔空头盈利交易的盈利"""
-    n = num_total_trades(context)
-    if n == 0:
-        return 0
-    df = context.fill.short_realized_gain_and_loss.df
-    return round(df[df > 0].sum() / n, 2)
-
-
-def short_profit_per_losing_trade(context):
-    """平均每笔空头亏损交易的亏损"""
-    n = num_total_trades(context)
-    if n == 0:
-        return 0
-    df = context.fill.short_realized_gain_and_loss.df
-    return round(df[df < 0].sum() / n, 2)
-
-
-def long_profit_per_trade(context):
-    """平均每笔多头交易的盈亏"""
-    n = num_total_trades(context)
-    if n == 0:
-        return 0
-    df = context.fill.long_realized_gain_and_loss.df
-    return round(df.sum() / n, 2)
-
-
-def short_profit_per_trade(context):
-    """平均每笔空头交易的盈亏"""
-    n = num_total_trades(context)
-    if n == 0:
-        return 0
-    df = context.fill.short_realized_gain_and_loss.df
-    return round(df.sum() / n, 2)
+    return round(total_net_profit(equity, capital) / n, 2)
 
 
 def avg_profit_per_winning_trade(context):
@@ -483,18 +504,66 @@ def avg_loss_per_losing_trade(context):
     n = num_losing_trades(context)
     if n == 0:
         return 0
-    loss = gross_loss(context.trade_log)
+    loss = gross_loss(context)
     return round(loss / n, 2)
 
 
-def avg_profit_per_trade(context):
-    """每笔交易平均盈亏"""
-    equity = context.fill.equity.df
-    capital = context.initial_cash
-    n = num_total_trades(context)
+# 多头的盈利与亏损
+
+def long_profit_per_trade(context):
+    """平均每笔多头交易的盈亏"""
+    n = num_long_trades(context)
     if n == 0:
         return 0
-    return round(total_net_profit(equity, capital) / n, 2)
+    df = context.fill.long_realized_gain_and_loss.df
+    return round(df.sum() / n, 2)
+
+
+def long_profit_per_winning_trade(context):
+    """平均每笔多头盈利交易的盈利"""
+    n = num_winning_long_trades(context)
+    if n == 0:
+        return 0
+    profit = gross_long_profit(context)
+    return round(profit / n, 2)
+
+
+def long_loss_per_losing_trade(context):
+    """平均每笔多头亏损交易的亏损"""
+    n = num_losing_long_trades(context)
+    if n == 0:
+        return 0
+    loss = gross_long_loss(context)
+    return round(loss / n, 2)
+
+
+# 空头的盈利与亏损
+
+def short_profit_per_trade(context):
+    """平均每笔空头交易的盈亏"""
+    n = num_short_trades(context)
+    if n == 0:
+        return 0
+    df = context.fill.short_realized_gain_and_loss.df
+    return round(df.sum() / n, 2)
+
+
+def short_profit_per_winning_trade(context):
+    """平均每笔空头盈利交易的盈利"""
+    n = num_winning_short_trades(context)
+    if n == 0:
+        return 0
+    df = context.fill.short_realized_gain_and_loss.df
+    return round(df[df > 0].sum() / n, 2)
+
+
+def short_loss_per_losing_trade(context):
+    """平均每笔空头亏损交易的亏损"""
+    n = num_losing_short_trades(context)
+    if n == 0:
+        return 0
+    df = context.fill.short_realized_gain_and_loss.df
+    return round(df[df < 0].sum() / n, 2)
 
 
 # def avg_profit_per_winning_trade(trade_log):
@@ -991,14 +1060,17 @@ def stats(context):
     #     ending_equity(dbal) - total_net_profit(trade_log) - (
     #         beginning_equity(capital)))
     stats['净利润'] = total_net_profit(equity, capital)
-    stats['总盈利'] = gross_profit(trade_log)
-    stats['总亏损'] = gross_loss(trade_log)
-    stats['盈亏比'] = profit_factor(trade_log)
-    stats['盈利率'] = add_pct(
-        return_rate(trade_log, capital))
-    rate = annual_return_rate(equity, capital, start, end)
+    stats['总盈利'] = gross_profit(context)
+    stats['总盈利（多头）'] = gross_long_profit(context)
+    stats['总盈利（空头）'] = gross_short_profit(context)
+    stats['总亏损'] = gross_loss(context)
+    stats['总亏损（多头）'] = gross_long_loss(context)
+    stats['总亏损（空头）'] = gross_short_loss(context)
+    stats['盈亏比'] = add_pct(profit_factor(context))
+    stats['盈利率'] = add_pct(return_rate(trade_log, capital))
+    rate = annualized_return_rate(equity, capital, start, end)
     stats['年化单利收益率'] = add_pct(rate)
-    compound_rate = annual_compound_return_rate(equity, capital, start, end)
+    compound_rate = annualized_compound_return_rate(equity, capital, start, end)
     stats['年化复利收益率'] = add_pct(compound_rate)
     # stats['测试周期数'] = context.test_days
     # stats['pct_time_in_market'] = (
@@ -1019,11 +1091,18 @@ def stats(context):
     stats['胜率'] = winning_rate(context)
 
     # 盈利与亏损
-    stats['avg_profit_per_trade'] = avg_profit_per_trade(trade_log, capital)
-    stats['avg_profit_per_winning_trade'] = (
-        avg_profit_per_winning_trade(trade_log))
-    stats['avg_loss_per_losing_trade'] = avg_loss_per_losing_trade(trade_log)
-    stats['ratio_avg_profit_win_loss'] = ratio_avg_profit_win_loss(trade_log)
+    stats['平均盈亏'] = avg_profit_per_trade(context)
+    stats['平均盈亏（多头）'] = long_profit_per_trade(context)
+    stats['平均盈亏（空头）'] = short_profit_per_trade(context)
+
+    stats['平均盈利'] = avg_profit_per_winning_trade(context)
+    stats['平均盈利（多头）'] = long_profit_per_winning_trade(context)
+    stats['平均盈利（空头）'] = short_profit_per_winning_trade(context)
+
+    stats['平均亏损'] = avg_loss_per_losing_trade(context)
+    stats['平均亏损（多头）'] = long_loss_per_losing_trade(context)
+    stats['平均亏损（空头）'] = short_loss_per_losing_trade(context)
+
     stats['最大盈利'] = (
         largest_profit_winning_trade(trade_log))
     stats['最大亏损'] = largest_loss_losing_trade(trade_log)
@@ -1063,7 +1142,7 @@ def stats(context):
     stats['drawdown_recovery'] = _difference_in_years(
         datetime.strptime(dd['start_date'], "%Y-%m-%d %H:%M:%S"),
         datetime.strptime(dd['end_date'], "%Y-%m-%d %H:%M:%S")) * -1
-    cagr = annual_return_rate(equity['equity'][-1], capital, start, end)
+    cagr = annualized_return_rate(equity['equity'][-1], capital, start, end)
     stats['drawdown_annualized_return'] = dd['max'] / cagr
     # dd = max_intra_day_drawdown(equity['equity_high'], equity['equity_low'])
     # stats['max_intra_day_drawdown'] = dd['max']
@@ -1096,7 +1175,7 @@ def stats(context):
     stats['best_year'] = pc.max()
     stats['worst_year'] = pc.min()
     stats['avg_year'] = np.average(pc)
-    stats['annual_std'] = pc.std()
+    stats['annualized_std'] = pc.std()
     pc = pct_change(equity['equity'], TRADING_DAYS_PER_MONTH)
     stats['pct_profitable_months'] = (pc > 0).sum() / len(pc) * 100
     stats['best_month'] = pc.max()
@@ -1156,7 +1235,7 @@ def summary3(stats, benchmark_stats, *extras):
     将stats的数据和基准的stats数据以DataDrame格式返回，必须先调用stats()函数
     同时，可添加额外参数计算stats的数据和基准的stats数据
     """
-    index = ['annual_return_rate',
+    index = ['annualized_return_rate',
              'max_closed_out_drawdown',
              'drawdown_annualized_return',
              'pct_profitable_months',
@@ -1165,8 +1244,8 @@ def summary3(stats, benchmark_stats, *extras):
              'sharpe_ratio',
              'sortino_ratio']
     columns = ['strategy', 'benchmark']
-    data = [(stats['annual_return_rate'],
-             benchmark_stats['annual_return_rate']),
+    data = [(stats['annualized_return_rate'],
+             benchmark_stats['annualized_return_rate']),
             (stats['max_closed_out_drawdown'],
              benchmark_stats['max_closed_out_drawdown']),
             (stats['drawdown_annualized_return'],

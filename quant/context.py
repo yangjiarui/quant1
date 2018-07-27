@@ -26,6 +26,7 @@ class Context(object):
         self.margin = 0.2
         self.units = 300
         self.lots = 1
+        self.slippage = 1
         self.instrument = 'IF'
         self.initial_cash = 500000
 

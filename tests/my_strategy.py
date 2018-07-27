@@ -89,6 +89,7 @@ context.commission = 0.0003
 context.margin = 0.08
 context.units = 300
 context.lots = 1
+context.slippage = 1
 context.instrument = 'IF'
 context.initial_cash = 500000
 
@@ -99,6 +100,7 @@ trade.get_ready()
 # trade.set_cash(500000)
 trade.set_notify()
 trade.run()
+logger.info('---my_strategy---: {}'.format(context.feed_list[0].bar.data))
 logger.debug(trade.get_trade_log('IF'))
-trade.plot(instrument='IF')
+# trade.plot(instrument='IF')
 trade.get_analysis(instrument='IF')

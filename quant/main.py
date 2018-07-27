@@ -41,8 +41,9 @@ class Quant(object):
         margin = self.context.margin
         units = self.context.units
         lots = self.context.lots
+        slippage = self.context.slippage
         instrument = self.context.instrument
-        self.set_commission(commission, margin, units, lots, instrument)
+        self.set_commission(commission, margin, units, lots, slippage, instrument)
         self.set_cash(self.context.initial_cash)
 
     def run(self):
@@ -221,7 +222,7 @@ class Quant(object):
         self.set_trailing_stop_price('open')
         self.set_buffer(10)
 
-    def set_commission(self, commission, margin, units, lots, instrument=None):
+    def set_commission(self, commission, margin, units, lots, slippage, instrument=None):
         """
         设置手续费、保证金、合约单位及合约品种等参数
         commission：手续费，0.0003表示每手收取0.03%的手续费
@@ -235,6 +236,7 @@ class Quant(object):
                 feed.set_per_margin(margin)
                 feed.set_units(units)
                 feed.set_lots(lots)
+                feed.set_slippage(slippage)
 
     def set_cash(self, cash=500000):
         """设置初始资金"""

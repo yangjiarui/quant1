@@ -39,6 +39,14 @@ class EventBase(object):
         self._order.set_lots(value)
 
     @property
+    def slippage(self):
+        return self._order.slippage
+
+    @slippage.setter
+    def slippage(self, value):
+        self._order.set_slippage(value)
+
+    @property
     def execute_type(self):
         return self._order.execute_type
 

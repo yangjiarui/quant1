@@ -230,6 +230,10 @@ class OrderBase(object):
     def bs_price(self) -> list:
         return self._bs_price
 
+    @property
+    def slippage(self):
+        return self._slippage
+
     def set_bs_price(self, value):
         self.bs_price.append(value)
 
@@ -270,6 +274,9 @@ class OrderBase(object):
 
     def set_trailing_stop(self, price):
         self._trailing_stop = price
+
+    def set_slippage(self, slippage):
+        self._slippage = slippage
 
 
 class Order(OrderBase):

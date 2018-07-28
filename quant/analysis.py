@@ -317,6 +317,7 @@ def annualized_return_rate(equity, capital, start, end):
     end_equity = equity['equity'][-1]
     profit = end_equity - capital
     n = _difference_in_years(start, end)
+    logger.info('---year---: {}'.format(n))
     rate = round((profit / capital) / n * 100, 2)
     return rate
 
@@ -854,6 +855,24 @@ def sharpe_ratio(rets, risk_free=0.00, period=TRADING_DAYS_PER_YEAR):
     return sharpe
 
 
+def sharpe_ratio2(rets, risk_free=0.03, period=365):
+    """
+    根据每日的收益计算每日的夏普比率
+    夏普比率=（平均年收益率-无风险利率）/收益率的标准离差率
+                    ＝[E(Rp)－Rf]/σp；
+    rets：一天的array或资金列表
+    E(Rp)：平均年收益率＝年化单利收益率
+    risk_free（Rf）：无风险利率，默认为3%
+    σp：收益率的标准差率（年化标准差率）＝（标准离差/初始资金）/sqrt (测试天数/365)
+    Return：每年的夏普比率
+    """
+    dev = np.std(rets, axis=0)
+    mean = np.mean(rets, axis=0)
+    logger.info('---mean * period---: {}'.format(mean * period))
+    sharpe = (mean * period - risk_free) / (dev * np.sqrt(period))
+    return np.round(sharpe * 100, 2)
+
+
 def sortino_ratio(rets, risk_free=0.00, period=TRADING_DAYS_PER_YEAR):
     """
     根据每日的收益计算每日的索提诺比率，
@@ -869,7 +888,7 @@ def sortino_ratio(rets, risk_free=0.00, period=TRADING_DAYS_PER_YEAR):
     negative_rets = rets[rets < 0]
     dev = np.std(negative_rets, axis=0)
     sortino = (mean * period - risk_free) / (dev * np.sqrt(period))
-    return sortino
+    return np.round(sortino * 100, 2)
 
 
 # # -------------------------产生各种统计数据的主要调用函数---------------------------
@@ -1048,14 +1067,18 @@ def stats(context):
     stats = OrderedDict()
 
     # 总体数据
+    stats['测试开始时间'] = start.strftime("%Y-%m-%d")
+    stats['测试结束时间'] = end.strftime("%Y-%m-%d")
     stats['测试天数'] = (end - start).days
     stats['测试周期数'] = context.count
-    stats['测试开始时间'] = start.strftime("%Y-%m-%d %H:%M:%S")
-    stats['测试结束时间'] = end.strftime("%Y-%m-%d %H:%M:%S")
     stats['指令总数'] = len(context.fill.completed_list)
     stats['初始资金'] = beginning_equity(capital)
+    stats['单位'] = str(context.units) + '（吨/手，元/点）'
+    stats['保证金'] = context.margin
+    stats['手续费'] = context.commission
+    stats['滑点'] = context.slippage
+    stats['初始资金比例'] = add_pct(initial_cash_rate)
     stats['最终权益'] = ending_equity(equity)
-    stats['初始资金比例'] = 0
     # stats['unrealized_profit'] = (
     #     ending_equity(dbal) - total_net_profit(trade_log) - (
     #         beginning_equity(capital)))
@@ -1067,6 +1090,8 @@ def stats(context):
     stats['总亏损（多头）'] = gross_long_loss(context)
     stats['总亏损（空头）'] = gross_short_loss(context)
     stats['盈亏比'] = add_pct(profit_factor(context))
+    stats['夏普比率'] = sharpe_ratio(equity['equity'].pct_change())
+    stats['索提诺比率'] = sortino_ratio(equity['equity'].pct_change())
     stats['盈利率'] = add_pct(return_rate(trade_log, capital))
     rate = annualized_return_rate(equity, capital, start, end)
     stats['年化单利收益率'] = add_pct(rate)
@@ -1188,10 +1213,6 @@ def stats(context):
     stats['worst_week'] = pc.min()
     stats['avg_week'] = np.average(pc)
     stats['weekly_std'] = pc.std()
-
-    # 比率
-    stats['夏普比率'] = sharpe_ratio(equity['equity'].pct_change())
-    stats['索提诺比率'] = sortino_ratio(equity['equity'].pct_change())
 
     for i, j in stats.items():
         if type(j) is not str:

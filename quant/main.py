@@ -42,6 +42,7 @@ class Quant(object):
         units = self.context.units
         lots = self.context.lots
         slippage = self.context.slippage
+        logger.info('---slippage in main---:{}'.format(slippage))
         instrument = self.context.instrument
         self.set_commission(commission, margin, units, lots, slippage, instrument)
         self.set_cash(self.context.initial_cash)
@@ -237,6 +238,7 @@ class Quant(object):
                 feed.set_units(units)
                 feed.set_lots(lots)
                 feed.set_slippage(slippage)
+                logger.debug('---slippage in feed main---:{}'.format(feed.slippage))
 
     def set_cash(self, cash=500000):
         """设置初始资金"""
@@ -363,6 +365,8 @@ class Quant(object):
             self.context.fill.long_realized_gain_and_loss.df))
         trade_log.reset_index(drop=True, inplace=True)
         analysis = stats(self.context)
+        logger.info('----------------------stats-----------------------')
+        logger.info('---analysis_table---: {}'.format(analysis))
         analysis_table = dict_to_table(analysis)
         with open(date + '_analysis_table.txt', 'w') as f:
             f.write(str(analysis_table))
@@ -376,3 +380,12 @@ class Quant(object):
             fill=self.fill
         )
         data.plot(instrument=instrument, engine=engine, notebook=notebook)
+
+    def plot_partly(self, instrument, engine='plotly', notebook=False):
+        """画图展示"""
+        data = plotter.Plotter(
+            instrument=instrument,
+            bar=self.bar,
+            fill=self.fill
+        )
+        data.plot_partly(instrument=instrument, engine=engine, notebook=notebook)

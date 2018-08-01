@@ -175,6 +175,8 @@ class MarketEvent(object):
         self.per_margin = feed.per_margin
         self.units = feed.units
         self.execute_mode = feed.execute_mode
+        self.slippage = feed.slippage
+        logger.info('---slippage in event---:{}'.format(self.slippage))
 
 
 class SignalEvent(EventBase):

@@ -12,10 +12,10 @@ def dict_to_table(result_dict):
                      (col_width_keys + col_width_values + 2) * '-' + '#')
     data_list = []
     for key, value in result_dict.items():
-        data_list.append('| ' + '| '.join([
-            '{:{}}'.format(key, col_width_keys), '{:{}}'.format(
+        data_list.append('| ' + '-----'.join([
+            '{:{}}-----------'.format(key, col_width_keys), '{:{}}'.format(
                 value, col_width_values)
-        ]) + ' |\n')
+        ]) + ' \n')
 
     table_str = '{}\n{}{}'.format(header_footer, ''.join(data_list),
                                   header_footer)

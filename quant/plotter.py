@@ -26,6 +26,12 @@ class Plotter(PlotBase):
         self.commission_df = fill.commission.df
         self.data = []
         self.update_menus = []
+        self.data_dict = {
+            '权益': self.equity_df,
+            '现金': self.cash_df,
+            '利润(或亏损)': self.realized_G_L_df,
+            '浮动盈亏': self.unrealized_g_l_df,
+        }
 
     def plot(self, instrument=None, engine='plotly', notebook=False):
         if engine == 'plotly':
@@ -123,3 +129,60 @@ class Plotter(PlotBase):
             py.iplot(fig, filename='Strategy_Results.html', validate=False)
         else:
             py.plot(fig, filename='Strategy_Results.html', validate=False)
+
+    def plot_profit(self, instrument=None, engine='plotly', notebook=False):
+        if engine == 'plotly':
+            if isinstance(instrument, str):
+                df = pd.DataFrame(self.bar[instrument])
+                df.set_index('time', inplace=True)
+                df.index = pd.DatetimeIndex(df.index)
+
+        p_realized_gain_and_loss = go.Scatter(
+            x=self.realized_G_L_df.index,
+            y=self.realized_G_L_df.realized_gain_and_loss,
+            xaxis='x5',
+            yaxis='y5',
+            name='利润/亏损')
+
+        self.data.append(p_realized_gain_and_loss)
+        layout = go.Layout(
+            xaxis2=dict(domain=[0, 1], anchor='y2', scaleanchor='x2', autorange=True),
+            yaxis2=dict(domain=[0, 0.2], scaleanchor='x2', autorange=True,))
+        fig = go.Figure(data=self.data, layout=layout)
+        if notebook:
+            import plotly
+            plotly.offline.init_notebook_mode()
+            py.iplot(fig, filename='Realized_gain_and_loss.html', validate=False)
+        else:
+            py.plot(fig, filename='Realized_gain_and_loss.html', validate=False)
+
+    def _plot_partly(self, name, value, instrument=None, engine='plotly', notebook=False):
+        if engine == 'plotly':
+            if isinstance(instrument, str):
+                df = pd.DataFrame(self.bar[instrument])
+                df.set_index('time', inplace=True)
+                df.index = pd.DatetimeIndex(df.index)
+
+        p_data = go.Scatter(
+            x=value.index,
+            y=value[value.columns[0]],
+            xaxis='x2',
+            yaxis='y2',
+            name=name)
+
+        self.data.append(p_data)
+        layout = go.Layout(
+            xaxis2=dict(domain=[0, 1], anchor='y2', scaleanchor='x2', autorange=True),
+            yaxis2=dict(domain=[0, 1], scaleanchor='x2', autorange=True,))
+        fig = go.Figure(data=self.data, layout=layout)
+        return fig
+
+    def plot_partly(self, instrument=None, engine='plotly', notebook=False):
+        for name, value in self.data_dict.items():
+            fig = self._plot_partly(name, value, instrument, engine, notebook)
+        if notebook:
+            import plotly
+            plotly.offline.init_notebook_mode()
+            py.iplot(fig, filename='策略收益情况.html', validate=False)
+        else:
+            py.plot(fig, filename='策略收益情况.html', validate=False)

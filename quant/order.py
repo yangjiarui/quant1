@@ -142,6 +142,7 @@ class OrderBase(object):
         self._order_data = None
         self._date = None
         self._lots = None
+        self._slippage = None
         self._price = None
         self._take_profit = None
         self._stop_loss = None
@@ -233,6 +234,10 @@ class OrderBase(object):
     @property
     def slippage(self):
         return self._slippage
+
+    @slippage.setter
+    def slippage(self, value):
+        self._slippage = value
 
     def set_bs_price(self, value):
         self.bs_price.append(value)

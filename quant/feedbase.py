@@ -25,6 +25,7 @@ class DataHandler(ABC):
         self._per_margin = None
         self._lots = None
         self._units = None
+        self._slippage = None
         self._iteration_buffer = None  # 给preload用的，一次性的
         self._buffer_days = None
         self._iteration_data = None  # 给get_new_bar用的
@@ -43,6 +44,9 @@ class DataHandler(ABC):
 
     def set_units(self, value):
         self._units = value
+
+    def set_slippage(self, value):
+        self._slippage = value
 
     def set_iteration_buffer(self, value):
         self._iteration_buffer = value
@@ -87,6 +91,14 @@ class DataHandler(ABC):
     @units.setter
     def units(self, value):
         self._units = value
+
+    @property
+    def slippage(self):
+        return self._slippage
+
+    @slippage.setter
+    def slippage(self, value):
+        self._slippage = value
 
     @property
     def iteration_buffer(self):

@@ -118,6 +118,7 @@ class BacktestFill(FillBase):
         """
         commission = 0  # 不交易就没有手续费
         per_comm = fill_event.per_comm
+        logger.info('---slippage in update_commission---:{}'.format(fill_event.slippage))
 
         if fill_event.execute_type in ['LIMIT', 'STOP']:
             pass
@@ -403,16 +404,18 @@ class BacktestFill(FillBase):
         date = fill_event.date
         lots = fill_event.lots
         logger.debug('lots in _update_trade_list: {}'.format(lots))
+        logger.info('slippage in _update_trade_list: {}'.format(f.slippage))
+        logger.info('slippage in _update_trade_list: {}'.format(type(f.slippage)))
         re_profit_list = self.realized_gain_and_loss.re_profit
 
         def get_re_profit(trade_lots, trade_code):
             """计算平仓盈亏和手续费"""
             if trade_code == 1:  # 做多
-                buy_price = f.price + 0.2 * f.slippage
-                sell_price = i.price - 0.2 * f.slippage
+                buy_price = f.price + 0.2 * 1
+                sell_price = i.price - 0.2 * 1
             elif trade_code == 0:  # 做空
-                buy_price = i.price + 0.2 * f.slippage
-                sell_price = f.price - 0.2 * f.slippage
+                buy_price = i.price + 0.2 * 1
+                sell_price = f.price - 0.2 * 1
             # re_profit = np.round((f.price - i.price) * trade_lots * f.units * i.direction, 2)
             re_profit = np.round((sell_price - buy_price) * trade_lots * f.units, 2)
             logger.info('re_profit: {} {} {} {} {} {}'.format(
@@ -471,7 +474,7 @@ class BacktestFill(FillBase):
                             self._completed_list.append(copy(i))
                             self._completed_list.append(copy(f))
                             i.lots -= f.lots  # 修改抵消后剩余的空单
-                            get_re_profit(f.lots)  # 用执行交易的部分计算利润
+                            get_re_profit(f.lots, 1)  # 用执行交易的部分计算利润
                             f.lots = 0  # 没有多单了，单位设为0
 
                             if i.lots != 0:
@@ -483,7 +486,7 @@ class BacktestFill(FillBase):
                             # self._completed_list.append((copy(i), copy(f)))
                             self._completed_list.append(copy(i))
                             self._completed_list.append(copy(f))
-                            get_re_profit(i.lots)  # 用执行交易的部分计算利润
+                            get_re_profit(i.lots, 1)  # 用执行交易的部分计算利润
                             f.lots -= i.lots  # 修改多单仓位，若为0，后面会删除
 
             # 判断情况二，即做空的情况
@@ -500,7 +503,7 @@ class BacktestFill(FillBase):
                             self._completed_list.append(copy(i))
                             self._completed_list.append(copy(f))
                             i.lots -= f.lots  # 修改抵消后剩余的多单
-                            get_re_profit(f.lots)  # 用执行交易的部分计算利润
+                            get_re_profit(f.lots, 0)  # 用执行交易的部分计算利润
                             f.lots = 0  # 没有空单了，单位设为0
 
                             if i.lots != 0:
@@ -512,7 +515,7 @@ class BacktestFill(FillBase):
                             # self._completed_list.append((copy(i), copy(f)))
                             self._completed_list.append(copy(i))
                             self._completed_list.append(copy(f))
-                            get_re_profit(i.lots)  # 用执行交易的部分计算利润
+                            get_re_profit(i.lots, 0)  # 用执行交易的部分计算利润
                             f.lots -= i.lots  # 修改空单仓位，若为0，后面会删除
 
     def __to_list(self, fill_event):

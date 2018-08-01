@@ -321,3 +321,53 @@ class Strategy(StrategyBase):
         logger.debug('self.position[-1] in sell: {}'.format(self.position[-1]))
         if self.position[-1] >= 0:  # 只有当未开仓或已建立多仓的情况才能卖出
             self.sell_base(lots, instrument, price, take_profit, stop_loss, trailing_stop)
+
+    def buy_open(self,
+                 lots,
+                 force=False,  # 表示强制加仓
+                 instrument=None,
+                 price=None,
+                 take_profit=None,
+                 stop_loss=None,
+                 trailing_stop=None):
+        if not force:
+            if self.position[-1] == 0:
+                self.buy_base(lots, instrument, price, take_profit, stop_loss, trailing_stop)
+        else:
+            if self.position[-1] >= 0:
+                self.buy_base(lots, instrument, price, take_profit, stop_loss, trailing_stop)
+
+    def sell_open(self,
+                  lots,
+                  force=False,  # 表示强制加仓
+                  instrument=None,
+                  price=None,
+                  take_profit=None,
+                  stop_loss=None,
+                  trailing_stop=None):
+        if not force:
+            if self.position[-1] == 0:
+                self.sell_base(lots, instrument, price, take_profit, stop_loss, trailing_stop)
+        else:
+            if self.position[-1] <= 0:
+                self.sell_base(lots, instrument, price, take_profit, stop_loss, trailing_stop)
+
+    def buy_close(self,
+                  lots,
+                  instrument=None,
+                  price=None,
+                  take_profit=None,
+                  stop_loss=None,
+                  trailing_stop=None):
+        if self.position[-1] < 0:
+            self.buy_base(lots, instrument, price, take_profit, stop_loss, trailing_stop)
+
+    def sell_close(self,
+                   lots,
+                   instrument=None,
+                   price=None,
+                   take_profit=None,
+                   stop_loss=None,
+                   trailing_stop=None):
+        if self.position[-1] > 0:
+            self.sell_base(lots, instrument, price, take_profit, stop_loss, trailing_stop)

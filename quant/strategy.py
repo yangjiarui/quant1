@@ -332,9 +332,11 @@ class Strategy(StrategyBase):
                  trailing_stop=None):
         if not force:
             if self.position[-1] == 0:
+                logger.info('---buy_open---')
                 self.buy_base(lots, instrument, price, take_profit, stop_loss, trailing_stop)
         else:
             if self.position[-1] >= 0:
+                # logger.info('---buy_open---')
                 self.buy_base(lots, instrument, price, take_profit, stop_loss, trailing_stop)
 
     def sell_open(self,
@@ -347,9 +349,11 @@ class Strategy(StrategyBase):
                   trailing_stop=None):
         if not force:
             if self.position[-1] == 0:
+                logger.info('---sell_open---')
                 self.sell_base(lots, instrument, price, take_profit, stop_loss, trailing_stop)
         else:
             if self.position[-1] <= 0:
+                # logger.info('---sell_open---')
                 self.sell_base(lots, instrument, price, take_profit, stop_loss, trailing_stop)
 
     def buy_close(self,
@@ -360,6 +364,7 @@ class Strategy(StrategyBase):
                   stop_loss=None,
                   trailing_stop=None):
         if self.position[-1] < 0:
+            logger.info('---buy_close---')
             self.buy_base(lots, instrument, price, take_profit, stop_loss, trailing_stop)
 
     def sell_close(self,
@@ -370,4 +375,5 @@ class Strategy(StrategyBase):
                    stop_loss=None,
                    trailing_stop=None):
         if self.position[-1] > 0:
+            logger.info('---sell_close---')
             self.sell_base(lots, instrument, price, take_profit, stop_loss, trailing_stop)

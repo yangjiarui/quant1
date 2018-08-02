@@ -19,14 +19,14 @@ class MyStrategy(Strategy):
         # logger.info('ma10: {}'.format(ma10))
 
     def prenext(self):
-        # logger.debug('self.bar.open[1]: {}'.format(self.bar.open[1]))
-        # logger.debug('self.bar.high[1:]: {}'.format(self.bar.high[1:]))
-        # logger.debug('self.bar.low[:2]: {}'.format(self.bar.low[:2]))
-        # logger.debug('self.bar.close[:]: {}'.format(self.bar.close[-2:]))
-        # logger.debug('self.bar.open[:]: {}'.format(self.bar.open[:]))
-        # logger.debug('self.bar.high[:]: {}'.format(self.bar.high[:]))
-        # logger.debug('self.bar.low[:]: {}'.format(self.bar.low[:]))
-        # logger.debug('self.bar.close[:]: {}'.format(self.bar.close[:]))
+        # logger.info('self.bar.open[1]: {}'.format(self.bar.open[1]))
+        # logger.info('self.bar.high[1:]: {}'.format(self.bar.high[1:]))
+        # logger.info('self.bar.low[:2]: {}'.format(self.bar.low[:2]))
+        # logger.info('self.bar.close[:]: {}'.format(self.bar.close[-2:]))
+        logger.info('self.bar.open[:]: {}'.format(self.bar.open[:]))
+        logger.info('self.bar.high[:]: {}'.format(self.bar.high[:]))
+        logger.info('self.bar.low[:]: {}'.format(self.bar.low[:]))
+        logger.info('self.bar.close[:]: {}'.format(self.bar.close[:]))
         # logger.debug('self.position[-1]: {}'.format(self.position[-1]))
         # logger.debug('self.margin[-1]: {}'.format(self.margin[-1]))
         # logger.debug('self.avg_price[-1]: {}'.format(self.avg_price[-1]))
@@ -39,11 +39,13 @@ class MyStrategy(Strategy):
         logger.debug('self.equity[-1]: {}'.format(self.equity[-1]))
 
     def next(self):
-        lots = 1
+        lots = context.lots
         # ma2 = self.indicator.SMA(period=2, index=-1)
         ma5 = self.indicator.SMA(period=5, index=-1)
         # ma3 = self.indicator.SMA(period=3, index=-1)
         ma10 = self.indicator.SMA(period=10, index=-1)
+        close = self.bar.close[:][-1]
+        logger.info('---close in my_strategy---: {}'.format(close))
         logger.info('ma5: {}'.format(ma5))
         logger.info('ma10: {}'.format(ma10))
         # high = self.indicator.high()
@@ -53,7 +55,8 @@ class MyStrategy(Strategy):
         # logger.info('average_true_range: {}'.format(average_true_range))
         if ma5 > ma10:
             # self.buy_even_and_open(lots)
-            self.buy(lots)
+            logger.info('---ma5>ma10---')
+            self.buy_open(lots)
             # open = self.indicator.open()
             # last_open = self.indicator.open(2)
             # logger.info('open in my_strategy: {}'.format(open))
@@ -61,11 +64,18 @@ class MyStrategy(Strategy):
             # self.sell(2)
         elif ma5 < ma10:
             # self.sell_even_and_open(lots)
-            self.sell(lots)
+            logger.info('---ma5<ma10---')
+            self.sell_open(lots)
             # close = self.indicator.close()
             # logger.info('close in my_strategy: {}'.format(close))
             # self.buy(2)
-        # ma5_last
+        if self.position[-1] != 0:
+            if ma10 < close:
+                logger.info('---ma10<close---')
+                self.buy_close(lots)
+            elif ma10 > close:
+                logger.info('---ma10>close---')
+                self.sell_close(lots)
 
 
 context = Context()
@@ -86,7 +96,7 @@ data = CSV(
 context.feed_list = [data]
 context.strategy = [MyStrategy]
 context.commission = 0.0003
-context.margin = 0.08
+context.margin = 0.2
 context.units = 300
 context.lots = 1
 context.slippage = 1

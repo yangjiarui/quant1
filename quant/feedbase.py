@@ -264,6 +264,8 @@ class CSVDataReader(DataHandler):
 
         try:
             bar = _update()
+            self.preload_bar_list.append(bar)  # 添加第一个数据
+            self.preload_bar_list.append(bar)  # 添加第一个数据
             logger.debug('barr: {}'.format(bar))
             new_bar_date = datetime.strptime(bar['time'],
                                              self.date_format)
@@ -271,8 +273,8 @@ class CSVDataReader(DataHandler):
                 while new_bar_date < self.startdate:
                     bar = _update()
                     self.preload_bar_list.append(bar)
-                else:
-                    self.preload_bar_list.pop(-1)  # 经过验证bug检查的，最后删除掉一个重复(暂未证实)
+                # else:
+                    # self.preload_bar_list.pop(-1)  # 经过验证bug检查的，最后删除掉一个重复(暂未证实)
 
             elif self.startdate is None:
                 pass

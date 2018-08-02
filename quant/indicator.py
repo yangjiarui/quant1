@@ -56,6 +56,7 @@ class Indicator(IndicatorBase):
 
     def simple_moving_average(self, period, index=-1):
         close = self.get_preload(period, index, 'close')
+        logger.info('---close in sma---: {}'.format(close))
         sma_close = talib.SMA(close, period)  # 返回array，period个数前计算会得到nan，需处理
         if np.isnan(sma_close[index]):
             raise Warning

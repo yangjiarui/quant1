@@ -159,9 +159,9 @@ class DataHandler(ABC):
         self.get_new_bar()
 
     def next(self):
-        if not self.skipped:
-            self.skipped = True
-            return
+        # if not self.skipped:
+        #     self.skipped = True
+        #     return
         self.__update_bar()
         market_event = Context().MarketEvent
         events.put(market_event(self))
@@ -211,27 +211,28 @@ class CSVDataReader(DataHandler):
             return new_bar
 
         try:
+            # logger.info('---self.skipped---: {}'.format(self.skipped))
+            # if not self.skipped:
+            #     self.skipped = True
             new_bar = __update()
+            new_bar_date = datetime.strptime(new_bar['time'], self.date_format)
+            logger.info('---new_bar_date---: {}'.format(new_bar_date))
             # 根据输入的日期判断数据的范围，从起始时间开始，不断产生new_bar，到结束时间为止
-            new_bar_date = datetime.strptime(new_bar['time'],
-                                             self.date_format)
             if self.startdate:
                 # logger.debug("new_bar['time']: {}".format(new_bar['time']))
-                while new_bar_date <= self.startdate:
-                    # logger.debug('new_bar_date: {}'.format(new_bar_date))
-                    # logger.debug('startdate: {}'.format(self.startdate))
-                    # logger.debug('type of startdate: {}'.format(
-                    #     type(self.startdate)))
-                    # logger.debug(11111)
-                    # time.sleep(1)
+                # if new_bar_date == self.startdate:
+                #     logger.info('---startdate in feedbase---: {}'.format(new_bar_date))
+                #     self.cur_bar.add_new_bar(new_bar)
+                while new_bar_date < self.startdate:
                     new_bar = __update()
-                    new_bar_date = datetime.strptime(new_bar['time'],
-                                                     self.date_format)
+                    new_bar_date = datetime.strptime(new_bar['time'], self.date_format)
                     # logger.debug('self.enddate: {}'.format(self.enddate))
+                    logger.info('---new_bar_date---: {}'.format(new_bar_date))
+
             if self.enddate:
                 while new_bar_date > self.enddate:
                     raise StopIteration
-            logger.debug('new_bar in feedbase: {}'.format(new_bar))
+            logger.info('new_bar_date in feedbase: {}'.format(new_bar_date))
             self.cur_bar.add_new_bar(new_bar)
 
         except StopIteration:

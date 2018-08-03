@@ -80,11 +80,11 @@ class MyStrategy(Strategy):
 
 context = Context()
 context.start_date = '2013-01-04'
-context.end_date = '2013-04-01'
+context.end_date = '2017-12-11'
 
 data = CSV(
     # datapath='../data/IF_cleaned_data.csv',
-    datapath='../data/CFFEX沪深300期货IF主连.csv',
+    datapath='../data/CFFEX沪深300期货IF主连（修正）.csv',
     # datapath='/home/demlution/桌面/quant/data/IF_cleaned_data.csv',
     instrument='IF',
     startdate=context.start_date,
@@ -99,7 +99,7 @@ context.commission = 0.0003
 context.margin = 0.2
 context.units = 300
 context.lots = 1
-context.slippage = 1
+context.slippage = 0
 context.instrument = 'IF'
 context.initial_cash = 500000
 

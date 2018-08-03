@@ -2,6 +2,9 @@
 import pandas as pd
 from quant.logging_backtest import logger
 from plotly import graph_objs as go, offline as py
+from datetime import datetime
+
+date = datetime.now().strftime('%Y-%m-%d-%H-%M')
 
 
 class PlotBase(object):
@@ -183,6 +186,6 @@ class Plotter(PlotBase):
         if notebook:
             import plotly
             plotly.offline.init_notebook_mode()
-            py.iplot(fig, filename='策略收益情况.html', validate=False)
+            py.iplot(fig, filename=date + '_策略收益情况.html', validate=False)
         else:
-            py.plot(fig, filename='策略收益情况.html', validate=False)
+            py.plot(fig, filename=date + '_策略收益情况.html', validate=False)

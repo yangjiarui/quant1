@@ -32,7 +32,7 @@ class Plotter(PlotBase):
         self.data_dict = {
             '权益': self.equity_df,
             '现金': self.cash_df,
-            '利润(或亏损)': self.realized_G_L_df,
+            '平仓盈亏': self.realized_G_L_df,
             '浮动盈亏': self.unrealized_g_l_df,
         }
 

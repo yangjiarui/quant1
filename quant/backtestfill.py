@@ -227,8 +227,8 @@ class BacktestFill(FillBase):
         #     equity = np.round(self.initial_cash + total_re_profit - last_commission, 2)
         # equity = np.round(self.initial_cash + total_profit - total_commission, 2)
         equity = np.round(self.initial_cash + total_re_profit - total_commission, 2)
-        if self.position[-1] != 0:  # 开仓后，权益计算需考虑滑点损耗
-            equity -= 60 * fill_event.lots
+        # if self.position[-1] != 0:  # 开仓后，权益计算需考虑滑点损耗
+        #     equity -= 60 * fill_event.lots
         logger.debug('equity2 in date in update_equity: {} {}'.format(equity, fill_event.date))
 
         self.equity.add(fill_event.date, equity)
@@ -411,11 +411,11 @@ class BacktestFill(FillBase):
         def get_re_profit(trade_lots, trade_code):
             """计算平仓盈亏和手续费"""
             if trade_code == 1:  # 做多
-                buy_price = f.price + 0.2 * 1
-                sell_price = i.price - 0.2 * 1
+                buy_price = f.price  # + 0.2 * 1
+                sell_price = i.price  # - 0.2 * 1
             elif trade_code == 0:  # 做空
-                buy_price = i.price + 0.2 * 1
-                sell_price = f.price - 0.2 * 1
+                buy_price = i.price  # + 0.2 * 1
+                sell_price = f.price  # - 0.2 * 1
             # re_profit = np.round((f.price - i.price) * trade_lots * f.units * i.direction, 2)
             re_profit = np.round((sell_price - buy_price) * trade_lots * f.units, 2)
             logger.info('re_profit: {} {} {} {} {} {}'.format(

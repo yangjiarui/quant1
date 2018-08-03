@@ -42,7 +42,7 @@ def create_drawdowns(equity_curve: pd.DataFrame):
     # 去掉自动编号的index
     # equity_curve.reset_index(drop=True, inplace=True)
     eq_idx = equity_curve.index  # RangeIndex(start=0, stop=1199, step=1)
-    logger.info('---------eq_idx---------: {}'.format(eq_idx))
+    logger.debug('---------eq_idx---------: {}'.format(eq_idx))
     drawdown = pd.DataFrame(index=eq_idx, columns=['date', 'equity', 'drawdown', 'pct'])
     hwm = pd.Series(index=eq_idx, name='hwm')
     try:
@@ -93,11 +93,11 @@ def create_trade_log(completed_list, context):
         # logger.info('----position----: {}'.format(position.index))
         position = context.fill.position.df[i.date:i.date].values[0][0]
         d['position'] = position
-        logger.info('----position----: {} {}'.format(position, type(position)))
-        logger.info('----position----: {}'.format(context.fill.position.df[i.date:i.date]))
+        logger.debug('----position----: {} {}'.format(position, type(position)))
+        logger.debug('----position----: {}'.format(context.fill.position.df[i.date:i.date]))
         if position == 0:
             d['re_profit'] = context.fill.realized_gain_and_loss.df[i.date:i.date].values[0][0]
-            logger.info('---d["re_profit"]---{}'.format(d['re_profit']))
+            logger.debug('---d["re_profit"]---{}'.format(d['re_profit']))
         else:
             d['re_profit'] = 0
         comm = i.per_comm * i.units
@@ -121,7 +121,7 @@ def create_trade_log(completed_list, context):
     #            'commission', 'cumul_total']]
     logger.debug('----------df------------: {}'.format(df))
     df = df[['date', 'price', 'order_type', 'lots', 'position', 'commission', 're_profit', 'equity']]
-    logger.info('---df["re_profit"]---{} {}'.format(df[df['re_profit'] > 0], type(df['re_profit'])))
+    logger.debug('---df["re_profit"]---{} {}'.format(df[df['re_profit'] > 0], type(df['re_profit'])))
     return df
 
 
@@ -172,11 +172,11 @@ def _get_trade_bars(
                     open_date = position.index[i]  # 开仓时间
             else:  # position == 0，表示平仓了
                 close_date = position.index[i]
-                logger.info('--open_date, close_date--: {} {}'.format(open_date, close_date))
-                logger.info('---ohlc_data: {}'.format(ohlc_data[open_date:close_date]))
+                logger.debug('--open_date, close_date--: {} {}'.format(open_date, close_date))
+                logger.debug('---ohlc_data: {}'.format(ohlc_data[open_date:close_date]))
                 lenth_bar.append(len(ohlc_data[open_date:close_date].index))
                 open_date = None
-    logger.info('---lenth_bar---: {}'.format(lenth_bar))
+    logger.debug('---lenth_bar---: {}'.format(lenth_bar))
     return lenth_bar
 
 
@@ -206,7 +206,7 @@ def profit_rate_in_open(end_equity, capital, ohlc_data, trade_log):
     logger.info('---profit, capital, position_day---:{} {} {}'.format(
         profit, capital, position_day))
     rate = (profit / capital) / (position_day / 365)
-    return round(rate, 2)
+    return rate
 
 
 def duration_of_equity_not_reaching_high(equity):
@@ -244,61 +244,61 @@ def beginning_equity(capital):
 
 def ending_equity(equity):
     """最终权益"""
-    return round(equity.iloc[-1]['equity'], 2)
+    return float(equity.iloc[-1]['equity'])
 
 
 def total_net_profit(equity, capital):
     """净利润"""
     logger.info('--total_net_profit--:{} {}'.format(equity.iloc[-1], equity.iloc[-1]['equity']))
-    return round(equity.iloc[-1]['equity'] - capital, 2)
+    return float(equity.iloc[-1]['equity'] - capital)
 
 
 def long_net_profit(context):
     """净利润（多头）"""
     df = context.fill.long_realized_gain_and_loss.df
-    return round(float(df.sum()), 2)
+    return float(df.sum())
 
 
 def short_net_profit(context):
     """净利润（空头）"""
     df = context.fill.short_realized_gain_and_loss.df
-    return round(float(df.sum()), 2)
+    return float(df.sum())
 
 
 def gross_profit(context):
     """总盈利"""
     df = context.fill.realized_gain_and_loss.df
-    return round(float(df[df > 0].sum()), 2)
+    return float(df[df > 0].sum())
 
 
 def gross_long_profit(context):
     """总盈利(多头)"""
     df = context.fill.long_realized_gain_and_loss.df
-    return round(float(df[df > 0].sum()), 2)
+    return float(df[df > 0].sum())
 
 
 def gross_short_profit(context):
     """总盈利(空头)"""
     df = context.fill.short_realized_gain_and_loss.df
-    return round(float(df[df > 0].sum()), 2)
+    return float(df[df > 0].sum())
 
 
 def gross_loss(context):
     """总亏损，返回正值"""
     df = context.fill.realized_gain_and_loss.df
-    return round(-1 * float(df[df < 0].sum()), 2)
+    return -1 * float(df[df < 0].sum())
 
 
 def gross_long_loss(context):
     """总亏损（多头）"""
     df = context.fill.long_realized_gain_and_loss.df
-    return round(-1 * float(df[df < 0].sum()), 2)
+    return -1 * float(df[df < 0].sum())
 
 
 def gross_short_loss(context):
     """总亏损（空头）"""
     df = context.fill.short_realized_gain_and_loss.df
-    return round(-1 * float(df[df < 0].sum()), 2)
+    return -1 * float(df[df < 0].sum())
 
 
 def profit_factor(context):
@@ -307,12 +307,12 @@ def profit_factor(context):
         return 0
     if int(gross_loss(context)) == 0:  # 无亏损的情况
         return '+0'
-    return round(float(gross_profit(context) / gross_loss(context)), 2)
+    return gross_profit(context) / gross_loss(context)
 
 
 def return_rate(equity, capital):
     """净利润 / 初始资金，即盈利率"""
-    return round(total_net_profit(equity, capital) / capital * 100, 2)
+    return total_net_profit(equity, capital) / capital
 
 
 def annualized_return_rate(equity, capital, start, end):
@@ -321,7 +321,7 @@ def annualized_return_rate(equity, capital, start, end):
     profit = end_equity - capital
     n = _difference_in_years(start, end)
     logger.info('---year---: {}'.format(n))
-    rate = round((profit / capital) / n * 100, 2)
+    rate = (profit / capital) / n
     return rate
 
 
@@ -329,7 +329,7 @@ def annualized_compound_return_rate(equity, capital, start, end):
     """年化复利收益率（compound annualized return rate）"""
     end_equity = equity['equity'][-1]
     n = _difference_in_years(start, end)
-    rate = round((math.pow(end_equity / capital, 1 / n) - 1) * 100, 2)
+    rate = (math.pow(end_equity / capital, 1 / n) - 1)
     return rate
 
 
@@ -337,7 +337,7 @@ def monthly_return_rate(equity, capital, start, end):
     """月化单利收益率"""
     end_equity = equity['equity'][-1]
     n = _difference_in_months(start, end)
-    rate = round(((end_equity - capital) / capital) / n * 100, 2)
+    rate = ((end_equity - capital) / capital) / n
     return rate
 
 
@@ -345,7 +345,7 @@ def monthly_compound_return_rate(equity, capital, start, end):
     """月化复利收益率"""
     end_equity = equity['equity'][-1]
     n = _difference_in_months(start, end)
-    rate = round((math.pow(end_equity / capital, 1 / n) - 1) * 100, 2)
+    rate = math.pow(end_equity / capital, 1 / n) - 1
     return rate
 
 
@@ -359,11 +359,11 @@ def initial_cash_rate(context, capital):
     """初始资金比例"""
     margin = context.fill.margin.df
     # margin = margin.fillna(0)
-    logger.info('---margin in analysis---: {}'.format(margin))
+    logger.debug('---margin in analysis---: {}'.format(margin))
     first_margin = margin[margin > 0].dropna()['margin'].values[0]
-    logger.info('---first_margin---: {}'.format(first_margin))
-    rate = np.round(first_margin / capital * 100, 2)
-    logger.info('---initial_cash_rate---:{}'.format(rate))
+    logger.debug('---first_margin---: {}'.format(first_margin))
+    rate = first_margin / capital
+    logger.debug('---initial_cash_rate---:{}'.format(rate))
     return rate
 
 
@@ -377,7 +377,7 @@ def _total_days_in_market(ohlc_data, trade_log):
 
 
 def pct_time_in_market(ohlc_data, trade_log, start, end):
-    return _total_days_in_market(ohlc_data, trade_log) / len(ohlc_data[start:end].index) * 100
+    return _total_days_in_market(ohlc_data, trade_log) / len(ohlc_data[start:end].index)
 
 
 # -------------------------次数统计---------------------------
@@ -399,8 +399,8 @@ def num_short_trades(context):
 
 def num_winning_trades(context):
     """盈利次数"""
-    df = context.fill.realized_gain_and_loss.df
-    return len(df[df > 0].dropna())
+    times = num_winning_long_trades(context) + num_winning_short_trades(context)
+    return times
 
 
 def num_winning_long_trades(context):
@@ -417,8 +417,8 @@ def num_winning_short_trades(context):
 
 def num_losing_trades(context):
     """亏损次数"""
-    df = context.fill.realized_gain_and_loss.df
-    return len(df[df < 0].dropna())
+    times = num_losing_long_trades(context) + num_losing_short_trades(context)
+    return times
 
 
 def num_losing_long_trades(context):
@@ -435,8 +435,8 @@ def num_losing_short_trades(context):
 
 def num_even_trades(context):
     """持平次数"""
-    df = context.fill.realized_gain_and_loss.df
-    return len(df[df == 0].dropna())
+    times = num_even_long_trades(context) + num_even_short_trades(context)
+    return times
 
 
 def num_even_long_trades(context):
@@ -452,11 +452,11 @@ def num_even_short_trades(context):
 
 
 def profit_trades_rate(context):
-    """盈利比率，盈利比率=盈利次数次数/总交易次数"""
+    """盈利比率，盈利比率=盈利次数/总交易次数"""
     n = num_total_trades(context)
     if n == 0:
         return 0
-    return round(num_winning_trades(context) / n * 100, 2)
+    return num_winning_trades(context) / n
 
 
 def profit_long_trades_rate(context):
@@ -464,7 +464,7 @@ def profit_long_trades_rate(context):
     n = num_long_trades(context)
     if n == 0:
         return 0
-    return round(num_winning_long_trades(context) / n * 100, 2)
+    return num_winning_long_trades(context) / n
 
 
 def profit_short_trades_rate(context):
@@ -472,7 +472,7 @@ def profit_short_trades_rate(context):
     n = num_short_trades(context)
     if n == 0:
         return 0
-    return round(num_winning_short_trades(context) / n * 100, 2)
+    return num_winning_short_trades(context) / n
 
 
 def winning_rate(context):
@@ -480,7 +480,7 @@ def winning_rate(context):
     if num_total_trades(context) == 0:
         return 0
     num = num_total_trades(context) - num_losing_trades(context)
-    return round(num / num_total_trades(context), 4)
+    return num / num_total_trades(context)
 
 
 # -------------------------盈利与亏损---------------------------
@@ -494,7 +494,7 @@ def avg_profit_per_trade(context):
     n = num_total_trades(context)
     if n == 0:
         return 0
-    return round(total_net_profit(equity, capital) / n, 2)
+    return total_net_profit(equity, capital) / n
 
 
 def avg_profit_per_winning_trade(context):
@@ -503,7 +503,7 @@ def avg_profit_per_winning_trade(context):
     if n == 0:
         return 0
     profit = gross_profit(context)
-    return round(profit / n, 2)
+    return profit / n
 
 
 def avg_loss_per_losing_trade(context):
@@ -512,7 +512,7 @@ def avg_loss_per_losing_trade(context):
     if n == 0:
         return 0
     loss = gross_loss(context)
-    return round(loss / n, 2)
+    return loss / n
 
 
 # 多头的盈利与亏损
@@ -522,8 +522,8 @@ def long_profit_per_trade(context):
     n = num_long_trades(context)
     if n == 0:
         return 0
-    df = context.fill.long_realized_gain_and_loss.df
-    return round(float(df.sum()) / n, 2)
+    profit = long_net_profit(context)
+    return profit / n
 
 
 def long_profit_per_winning_trade(context):
@@ -532,7 +532,7 @@ def long_profit_per_winning_trade(context):
     if n == 0:
         return 0
     profit = gross_long_profit(context)
-    return round(profit / n, 2)
+    return profit / n
 
 
 def long_loss_per_losing_trade(context):
@@ -541,7 +541,7 @@ def long_loss_per_losing_trade(context):
     if n == 0:
         return 0
     loss = gross_long_loss(context)
-    return round(loss / n, 2)
+    return loss / n
 
 
 # 空头的盈利与亏损
@@ -551,8 +551,8 @@ def short_profit_per_trade(context):
     n = num_short_trades(context)
     if n == 0:
         return 0
-    df = context.fill.short_realized_gain_and_loss.df
-    return round(float(df.sum()) / n, 2)
+    profit = short_net_profit(context)
+    return profit / n
 
 
 def short_profit_per_winning_trade(context):
@@ -560,8 +560,8 @@ def short_profit_per_winning_trade(context):
     n = num_winning_short_trades(context)
     if n == 0:
         return 0
-    df = context.fill.short_realized_gain_and_loss.df
-    return round(float(df[df > 0].sum()) / n, 2)
+    profit = gross_short_profit(context)
+    return profit / n
 
 
 def short_loss_per_losing_trade(context):
@@ -569,8 +569,8 @@ def short_loss_per_losing_trade(context):
     n = num_losing_short_trades(context)
     if n == 0:
         return 0
-    df = context.fill.short_realized_gain_and_loss.df
-    return round(float(df[df < 0].sum()) / n, 2)
+    loss = gross_short_loss(context)
+    return loss / n
 
 
 # def avg_profit_per_winning_trade(trade_log):
@@ -603,7 +603,7 @@ def largest_profit_winning_trade(context):
         return 0
     equity = context.fill.equity.df
     cash = context.initial_cash
-    profit = round(equity[equity['equity'] > cash].max()['equity'] - cash, 2)
+    profit = equity[equity['equity'] > cash].max()['equity'] - cash
     return profit if profit else 0
 
 
@@ -613,7 +613,7 @@ def largest_loss_losing_trade(context):
         return 0
     equity = context.fill.equity.df
     cash = context.initial_cash
-    loss = round(cash - equity[equity['equity'] < cash].min()['equity'], 2)
+    loss = cash - equity[equity['equity'] < cash].min()['equity']
     return loss if loss else 0
 
 
@@ -714,8 +714,8 @@ def max_consecutive_winning_trades(context):
     # if num_winning_trades(context) == 0:
     #     return 0
     df = context.trade_log
-    logger.info('---df in analysis---: {}'.format(df))
-    logger.info('---df in analysis---: {}'.format(df['position'] == 0))
+    logger.debug('---df in analysis---: {}'.format(df))
+    logger.debug('---df in analysis---: {}'.format(df['position'] == 0))
     trade_log = df[df['position'] == 0]
     logger.info('---trade_log in analysis---:{}'.format(trade_log))
     return _subsequence(trade_log['re_profit'] > 0, True)
@@ -892,7 +892,7 @@ def sharpe_ratio(rets, initial_cash, test_days, risk_free=0.03, period=365):
     sigma_p = (dev / initial_cash) / np.sqrt(test_days / period)
     sharpe = (mean * period - risk_free) / (dev * np.sqrt(period))
     # sharpe = (0.4898 - risk_free) / sigma_p
-    return round(sharpe, 2)
+    return sharpe
 
 
 def sortino_ratio(rets, risk_free=0.00, period=TRADING_DAYS_PER_YEAR):
@@ -910,7 +910,7 @@ def sortino_ratio(rets, risk_free=0.00, period=TRADING_DAYS_PER_YEAR):
     negative_rets = rets[rets < 0]
     dev = np.std(negative_rets, axis=0)
     sortino = (mean * period - risk_free) / (dev * np.sqrt(period))
-    return np.round(sortino, 2)
+    return sortino
 
 
 def risk_rate(equity):
@@ -923,14 +923,14 @@ def risk_rate(equity):
     if max_correction < 0:
         max_correction = 0
     risk_rate = max_correction / equity['equity'][0]
-    return round(risk_rate * 100, 2)
+    return risk_rate
 
 
 def return_rate_per_risk_rate(equity, capital, start, end):
     """收益率 / 风险率"""
     return_rate = annualized_return_rate(equity, capital, start, end)
     risk = risk_rate(equity)
-    return round(return_rate / risk, 2)
+    return return_rate / risk
 
 
 
@@ -1171,7 +1171,7 @@ def stats(context):
     stats['总亏损（多头）'] = gross_long_loss(context)
     stats['总亏损（空头）'] = gross_short_loss(context)
 
-    stats['盈亏比'] = add_pct(profit_factor(context))
+    stats['盈亏比'] = profit_factor(context)
     # stats['夏普比率'] = sharpe_ratio(equity['equity'].pct_change())
     # stats['索提诺比率'] = sortino_ratio(equity['equity'].pct_change())
     # stats['测试周期数'] = context.test_days

@@ -1,6 +1,7 @@
 # coding:utf-8
 import pandas as pd
 from quant.logging_backtest import logger
+from datetime import datetime
 
 
 class BarBase(object):
@@ -8,29 +9,32 @@ class BarBase(object):
 
 
 class Current_bar(BarBase):
-    """当前bar的数据，以列表储存，第一条为当前行情，
-    第二条为下一日期的行情，把这些数据设为类属性"""
+    """当前bar的数据，以列表储存，只有一条，为当前行情，并把这些数据设为类属性"""
     def __init__(self):
-        self._cur_bar_list = []
+        self._cur_bar_list = [0]
 
     def add_new_bar(self, new_bar):
-        """如果列表是满的，添加新数据时需弹出第一条数据"""
-        bar_list_length = len(self._cur_bar_list)
-        logger.debug('self._cur_bar_list in barbase: {}'.format(self._cur_bar_list))
-        if bar_list_length == 2:
-            self._cur_bar_list.pop(0)
-        elif bar_list_length == 1:
-            if new_bar['time'] == self._cur_bar_list[0]['time']:
-                self._cur_bar_list = []
-        self._cur_bar_list.append(new_bar)
+        """不断更新当前行情数据"""
+        bar_date = datetime.strptime(new_bar['time'], '%Y/%m/%d')
+        logger.info('---bar_date in barbase---: {}'.format(bar_date))
+        # bar_list_length = len(self._cur_bar_list)
+        logger.info('self._cur_bar_list in barbase: {}'.format(self._cur_bar_list))
+        # if bar_list_length == 2:
+        #     # self._cur_bar_list.pop(0)
+        #     self._cur_bar_list = []
+        # elif bar_list_length == 1:
+        #     if new_bar['time'] == self._cur_bar_list[0]['time']:
+        #         self._cur_bar_list = []
+        # self._cur_bar_list.append(new_bar)
+        self._cur_bar_list[0] = new_bar
 
     @property
     def cur_data(self):
         return self._cur_bar_list[0]
 
-    @property
-    def next_data(self):
-        return self._cur_bar_list[1]
+    # @property
+    # def next_data(self):
+    #     return self._cur_bar_list[1]
 
     @property
     def cur_date(self):
@@ -52,25 +56,25 @@ class Current_bar(BarBase):
     def cur_close(self):
         return self._cur_bar_list[0]["close"]
 
-    @property
-    def next_date(self):
-        return self._cur_bar_list[1]["time"]
+    # @property
+    # def next_date(self):
+    #     return self._cur_bar_list[1]["time"]
 
-    @property
-    def next_open(self):
-        return self._cur_bar_list[1]["open"]
+    # @property
+    # def next_open(self):
+    #     return self._cur_bar_list[1]["open"]
 
-    @property
-    def next_high(self):
-        return self._cur_bar_list[1]["high"]
+    # @property
+    # def next_high(self):
+    #     return self._cur_bar_list[1]["high"]
 
-    @property
-    def next_low(self):
-        return self._cur_bar_list[1]["low"]
+    # @property
+    # def next_low(self):
+    #     return self._cur_bar_list[1]["low"]
 
-    @property
-    def next_close(self):
-        return self._cur_bar_list[1]["close"]
+    # @property
+    # def next_close(self):
+    #     return self._cur_bar_list[1]["close"]
 
 
 class Bar(BarBase):

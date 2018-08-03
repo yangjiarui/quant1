@@ -365,6 +365,8 @@ class Quant(object):
         analysis = stats(self.context)
         logger.info('----------------------stats-----------------------')
         logger.info('---analysis_table---: {}'.format(analysis))
+        equity = self.context.fill.equity.df
+        equity.to_csv(date + '_equity.csv')
         analysis_table = dict_to_table(analysis)
         with open(date + '_analysis_table.txt', 'w') as f:
             f.write(str(analysis_table))

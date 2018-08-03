@@ -61,12 +61,10 @@ class Quant(object):
                     self.__check_backtest_finished()))
                 if not self.__check_backtest_finished():
                     # cur_bar中数据不足两条，不开始计算
-                    if len(self.feed_list[-1].cur_bar._cur_bar_list) < 2:
+                    if len(self.feed_list[-1].cur_bar._cur_bar_list) < 1:
                         # logger.debug('events.qsize(): {}'.format(events.qsize()))
                         continue
                     else:
-                        logger.debug('self.feed_list[-1].cur_bar.next_date: {}'.format(
-                            self.feed_list[-1].cur_bar.next_date))
                         self.__update_time_index()  # 更新基本信息
                         logger.debug('self.feed_list[-1].cur_bar.cur_date: {}'.format(
                             self.feed_list[-1].cur_bar.cur_date))
@@ -136,8 +134,8 @@ class Quant(object):
     def __update_time_index(self):
         """每次更新行情后，根据新行情更新仓位、现金、保证金等账户基本信息"""
         self.fill.update_time_index(self.feed_list)
-        logger.debug('len(self.feed_list) in main: {}'.format(len(self.feed_list)))
-        logger.debug('self.feed_list in main: {}'.format(self.feed_list))
+        logger.info('len(self.feed_list) in main: {}'.format(len(self.feed_list)))
+        logger.info('self.feed_list in main: {}'.format(self.feed_list))
         date_dict = {}
         if len(self.feed_list) > 1:
             for index, feed in enumerate(self.feed_list):

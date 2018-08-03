@@ -1114,8 +1114,8 @@ def stats(context):
     # 总体数据
     stats['测试开始时间'] = start.strftime("%Y-%m-%d")
     stats['测试结束时间'] = end.strftime("%Y-%m-%d")
-    stats['测试天数'] = (end - start).days
-    stats['测试周期数'] = context.count - 2  # 开始日期和结束日期不参与统计
+    stats['测试天数'] = (end - start).days + 1
+    stats['测试周期数'] = context.count - 1
     stats['指令总数'] = len(context.fill.completed_list)
     stats['初始资金'] = beginning_equity(capital)
     stats['单位'] = str(context.units) + '（吨/手，元/点）'

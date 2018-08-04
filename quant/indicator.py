@@ -41,7 +41,7 @@ class IndicatorBase(object):
         if len(self.bar_list) < period:
             raise IndexError
         data_list = self.bar_list[-period:]
-        logger.info('len(data_list): {}'.format(len(data_list)))
+        logger.debug('len(data_list): {}'.format(len(data_list)))
         data = [i[ohlc] for i in data_list]
         return np.array(data)
 
@@ -56,7 +56,7 @@ class Indicator(IndicatorBase):
 
     def simple_moving_average(self, period, index=-1):
         close = self.get_preload(period, index, 'close')
-        logger.info('---close in sma---: {}'.format(close))
+        logger.debug('---close in sma---: {}'.format(close))
         sma_close = talib.SMA(close, period)  # 返回array，period个数前计算会得到nan，需处理
         if np.isnan(sma_close[index]):
             raise Warning
@@ -81,9 +81,9 @@ class Indicator(IndicatorBase):
         close(2)[0] 表示上一周期的close
         """
         close = self.get_basic_data(period, ohlc='close')
-        logger.info('type(close) :{}'.format(type(close)))
-        logger.info('close: {}'.format(close))
-        logger.info('close[0]: {}'.format(close[0]))
+        logger.debug('type(close) :{}'.format(type(close)))
+        logger.debug('close: {}'.format(close))
+        logger.debug('close[0]: {}'.format(close[0]))
         return close
 
     def average_true_range(self, period: int) -> float:
@@ -102,8 +102,8 @@ class Indicator(IndicatorBase):
         return average_true_range[-1]
 
     def money(self):
-        logger.info('self.fill.equity[-1]: {}'.format(self.fill.equity[-1]))
-        logger.info('self.fill.equity[-1]: {}'.format(type(self.fill.equity[-1])))
+        logger.debug('self.fill.equity[-1]: {}'.format(self.fill.equity[-1]))
+        logger.debug('self.fill.equity[-1]: {}'.format(type(self.fill.equity[-1])))
         return self.fill.equity[-1]
 
     def units(self):
@@ -120,7 +120,7 @@ class Indicator(IndicatorBase):
         index 为 1 表示 period 日前到昨日的最高价，也是 period 个周期内的最高价，
         index 是为比较函数 cross_up 和 cross_down 设置的
         """
-        logger.info('period, index : {} {}'.format(period, index))
+        logger.debug('period, index : {} {}'.format(period, index))
         if index not in [0, 1]:
             logger.warning('index must be 0 or 1, please choose the right index')
             logger.info('index set to 0 by default')

@@ -42,7 +42,7 @@ class Quant(object):
         units = self.context.units
         lots = self.context.lots
         slippage = self.context.slippage
-        logger.info('---slippage in main---:{}'.format(slippage))
+        logger.debug('---slippage in main---:{}'.format(slippage))
         instrument = self.context.instrument
         self.set_commission(commission, margin, units, lots, slippage, instrument)
         self.set_cash(self.context.initial_cash)
@@ -96,7 +96,7 @@ class Quant(object):
 
     def __initialization(self):
         """对所有 feed 和 fill 内各项数据进行初始化"""
-        logger.info('feed_list in main initialization: {}'.format(self.feed_list))
+        logger.debug('feed_list in main initialization: {}'.format(self.feed_list))
         for feed in self.feed_list:
             feed.load_once()
             instrument = feed.instrument
@@ -134,8 +134,8 @@ class Quant(object):
     def __update_time_index(self):
         """每次更新行情后，根据新行情更新仓位、现金、保证金等账户基本信息"""
         self.fill.update_time_index(self.feed_list)
-        logger.info('len(self.feed_list) in main: {}'.format(len(self.feed_list)))
-        logger.info('self.feed_list in main: {}'.format(self.feed_list))
+        logger.debug('len(self.feed_list) in main: {}'.format(len(self.feed_list)))
+        logger.debug('self.feed_list in main: {}'.format(self.feed_list))
         date_dict = {}
         if len(self.feed_list) > 1:
             for index, feed in enumerate(self.feed_list):
@@ -249,8 +249,8 @@ class Quant(object):
     def __output_summary(self):
         """输出简略的回测结果"""
         total = pd.DataFrame(self.fill.equity.dict)
-        logger.info('-----------self.fill.equity-------------: {}'.format(self.fill.equity))
-        logger.info('-------total---------: {}'.format(total))
+        logger.debug('-----------self.fill.equity-------------: {}'.format(self.fill.equity))
+        logger.debug('-------total---------: {}'.format(total))
         # with open('total.txt', 'w') as f:
         #     # f.write(str(total))
         #     for index, row in total.iterrows():
@@ -258,16 +258,16 @@ class Quant(object):
         #         f.write(str(','))
         #         f.write(str(row['equity']))
         #         f.write('\n')
-        logger.info('-----------total.index----------: {}'.format(total.index))
-        logger.info('-----------total.columns----------: {}'.format(total.columns))
+        logger.debug('-----------total.index----------: {}'.format(total.index))
+        logger.debug('-----------total.columns----------: {}'.format(total.columns))
         drawdown = create_drawdowns(total)
-        logger.info('----------------drawdown done----------')
+        logger.debug('----------------drawdown done----------')
         # 计算列中的后一个元素与前一个元素差的百分比
         total.set_index('date', inplace=True)  # 去掉 date，保留 equity
         pct_returns = total.pct_change()
-        logger.info('------------pct_change------------')
+        logger.debug('------------pct_change------------')
         total /= self.fill.initial_cash
-        logger.info('-----------total /--------------')
+        logger.debug('-----------total /--------------')
         # max_drawdown_pct, duration_for_pct = create_drawdowns(total['equity'])
         # logger.info('------------max_drawdown, duration----------: {} {}'.format(max_drawdown_pct, duration_for_pct))
         # logger.info('------------max_drawdown, duration----------: {} {}'.format(max_drawdown_value, duration_for_value))
@@ -293,11 +293,11 @@ class Quant(object):
         results['最大回撤时间'] = drawdown['date'][drawdown['drawdown'].idxmax()]  # 只能找出一个 index
         results['最大回撤比'] = str(round(drawdown['pct'].max() * 100, 2)) + '%'
         results['最大回撤比时间'] = drawdown['date'][drawdown['pct'].idxmax()]
-        logger.info('----short_realized_gain_and_loss----: {}'.format(
+        logger.debug('----short_realized_gain_and_loss----: {}'.format(
             self.fill.short_realized_gain_and_loss.dict))
-        logger.info('---type of short_realized_gain_and_loss.list---: {}'.format(
+        logger.debug('---type of short_realized_gain_and_loss.list---: {}'.format(
             type(self.fill.short_realized_gain_and_loss.list)))
-        logger.info('---short_realized_gain_and_loss.list---: {}'.format(
+        logger.debug('---short_realized_gain_and_loss.list---: {}'.format(
             self.fill.short_realized_gain_and_loss.list))
 
         long_profit = [i for i in self.fill.long_realized_gain_and_loss.list if i >= 0]
@@ -306,14 +306,14 @@ class Quant(object):
         short_profit = [i for i in self.fill.short_realized_gain_and_loss.list if i >= 0]
         short_loss = [i for i in self.fill.short_realized_gain_and_loss.list if i < 0]
         short_commission = self.fill.short_commission.list
-        logger.info('---self.fill.long_realized_gain_and_loss.list---: {}'.format(
+        logger.debug('---self.fill.long_realized_gain_and_loss.list---: {}'.format(
             self.fill.long_realized_gain_and_loss.list))
-        logger.info('---self.fill.short_realized_gain_and_loss.list---: {}'.format(
+        logger.debug('---self.fill.short_realized_gain_and_loss.list---: {}'.format(
             self.fill.short_realized_gain_and_loss.list))
-        logger.info('----long_profit, long_loss---: {} {}'.format(long_profit, long_loss))
-        logger.info('----long_commission---: {}'.format(long_commission))
-        logger.info('----short_profit, short_loss---: {} {}'.format(short_profit, short_loss))
-        logger.info('----short_commission---: {}'.format(short_commission))
+        logger.debug('----long_profit, long_loss---: {} {}'.format(long_profit, long_loss))
+        logger.debug('----long_commission---: {}'.format(long_commission))
+        logger.debug('----short_profit, short_loss---: {} {}'.format(short_profit, short_loss))
+        logger.debug('----short_commission---: {}'.format(short_commission))
         results['多头总盈利'] = round(sum(long_profit), 2)
         results['多头总亏损'] = round(sum(long_loss), 2)
         results['空头总盈利'] = round(sum(short_profit), 2)
@@ -364,7 +364,7 @@ class Quant(object):
         trade_log.reset_index(drop=True, inplace=True)
         analysis = stats(self.context)
         logger.info('----------------------stats-----------------------')
-        logger.info('---analysis_table---: {}'.format(analysis))
+        logger.debug('---analysis_table---: {}'.format(analysis))
         equity = self.context.fill.equity.df
         equity.to_csv(date + '_equity.csv')
         analysis_table = dict_to_table(analysis)

@@ -24,9 +24,9 @@ def create_sharpe_ratio(returns, period=252):
     returns: Pandas Series，代表周期的百分比回报
     period：周期，日线（252），小时线（252*6.5），分钟线（252*6.5*60）
     """
-    logger.info('-----returns-----: {}'.format(returns))
+    logger.debug('-----returns-----: {}'.format(returns))
     ratio = np.sqrt(period) * (np.mean(returns)) / np.std(returns)
-    logger.info('-----ratio-----: {} {}'.format(ratio, ratio[0]))
+    logger.debug('-----ratio-----: {} {}'.format(ratio, ratio[0]))
     return ratio[0]
 
 
@@ -139,10 +139,6 @@ def _difference_in_months(start: pd.Timestamp, end: pd.Timestamp):
     return diff_in_months
 
 
-def add_pct(number: int or float):
-    return '{}%'.format(number)
-
-
 def _get_trade_bars(
         ohlc_data: pd.DataFrame,
         trade_log: pd.DataFrame,
@@ -212,7 +208,7 @@ def profit_rate_in_open(end_equity, capital, ohlc_data, trade_log):
 def duration_of_equity_not_reaching_high(equity):
     """权益最长未创新高的持续时间"""
     # equity = context.fill.equity.df
-    logger.info('---equity in analysis---: {}'.format(equity))
+    logger.debug('---equity in analysis---: {}'.format(equity))
     max_equity = 0
     duration = pd.Timedelta(0)  # 时间间隔为 0
     date_list = []
@@ -221,7 +217,7 @@ def duration_of_equity_not_reaching_high(equity):
         if max_equity < equity.values[i][0]:
             max_equity = equity.values[i][0]
             date_list.append(equity.index[i])
-    logger.info('---date_list---: {}'.format(date_list))
+    logger.debug('---date_list---: {}'.format(date_list))
     for i in range(len(date_list) - 1):
         duration_ = date_list[i + 1] - date_list[i]
         if duration < duration_:
@@ -231,7 +227,7 @@ def duration_of_equity_not_reaching_high(equity):
     start_date = datetime.strftime(date_dict[max(date_dict)][0], '%Y/%m/%d')
     end_date = datetime.strftime(date_dict[max(date_dict)][1], '%Y/%m/%d')
     date = start_date + ' - ' + end_date
-    logger.info('---date in analysis---: {}'.format(date))
+    logger.debug('---date in analysis---: {}'.format(date))
     return date
 
 
@@ -249,7 +245,7 @@ def ending_equity(equity):
 
 def total_net_profit(equity, capital):
     """净利润"""
-    logger.info('--total_net_profit--:{} {}'.format(equity.iloc[-1], equity.iloc[-1]['equity']))
+    logger.debug('--total_net_profit--:{} {}'.format(equity.iloc[-1], equity.iloc[-1]['equity']))
     return float(equity.iloc[-1]['equity'] - capital)
 
 
@@ -267,8 +263,8 @@ def short_net_profit(context):
 
 def gross_profit(context):
     """总盈利"""
-    df = context.fill.realized_gain_and_loss.df
-    return float(df[df > 0].sum())
+    gross_profit = gross_long_profit(context) + gross_short_profit(context)
+    return gross_profit
 
 
 def gross_long_profit(context):
@@ -285,8 +281,8 @@ def gross_short_profit(context):
 
 def gross_loss(context):
     """总亏损，返回正值"""
-    df = context.fill.realized_gain_and_loss.df
-    return -1 * float(df[df < 0].sum())
+    gross_loss = gross_long_loss(context) + gross_short_loss(context)
+    return gross_loss
 
 
 def gross_long_loss(context):
@@ -320,7 +316,7 @@ def annualized_return_rate(equity, capital, start, end):
     end_equity = equity['equity'][-1]
     profit = end_equity - capital
     n = _difference_in_years(start, end)
-    logger.info('---year---: {}'.format(n))
+    logger.debug('---year---: {}'.format(n))
     rate = (profit / capital) / n
     return rate
 
@@ -717,7 +713,7 @@ def max_consecutive_winning_trades(context):
     logger.debug('---df in analysis---: {}'.format(df))
     logger.debug('---df in analysis---: {}'.format(df['position'] == 0))
     trade_log = df[df['position'] == 0]
-    logger.info('---trade_log in analysis---:{}'.format(trade_log))
+    logger.debug('---trade_log in analysis---:{}'.format(trade_log))
     return _subsequence(trade_log['re_profit'] > 0, True)
 
 
@@ -888,7 +884,7 @@ def sharpe_ratio(rets, initial_cash, test_days, risk_free=0.03, period=365):
     """
     dev = np.std(rets, axis=0)
     mean = np.mean(rets, axis=0)
-    logger.info('---mean * period---: {}'.format(mean * period))
+    logger.debug('---mean * period---: {}'.format(mean * period))
     sigma_p = (dev / initial_cash) / np.sqrt(test_days / period)
     sharpe = (mean * period - risk_free) / (dev * np.sqrt(period))
     # sharpe = (0.4898 - risk_free) / sigma_p
@@ -933,7 +929,14 @@ def return_rate_per_risk_rate(equity, capital, start, end):
     return return_rate / risk
 
 
+def get_round(number: float) -> float:
+    """保留两位小数"""
+    num = number + 0.005
+    return round(num, 2)
 
+
+def add_pct(number: int or float):
+    return '{}%'.format(round(number * 100, 2))
 
 
 # # -------------------------产生各种统计数据的主要调用函数---------------------------
@@ -1101,9 +1104,9 @@ def stats(context):
     """
     ohlc_data = context.ohlc_data
     trade_log = context.trade_log
-    logger.info('---trade_log.re_profit---{}'.format(trade_log['re_profit']))
+    logger.debug('---trade_log.re_profit---{}'.format(trade_log['re_profit']))
     # trade_log = trade_log[trade_log['position'] == 0].reset_index(drop=True)  # 取平仓交易记录
-    logger.info('---trade_log in analysis---: {}'.format(trade_log))
+    logger.debug('---trade_log in analysis---: {}'.format(trade_log))
     equity = context.fill.equity.df
     start = equity.index[0]
     end = equity.index[-1]
@@ -1123,24 +1126,24 @@ def stats(context):
     stats['手续费'] = context.commission
     stats['滑点'] = context.slippage
     stats['初始资金比例'] = add_pct(initial_cash_rate(context, capital))
-    stats['最终权益'] = ending_equity(equity)
+    stats['最终权益'] = get_round(ending_equity(equity))
     # stats['unrealized_profit'] = (
     #     ending_equity(dbal) - total_net_profit(trade_log) - (
     #         beginning_equity(capital)))
-    stats['持仓日收益率'] = profit_rate_in_open(equity['equity'][-1], capital, ohlc_data, trade_log)
+    stats['持仓日收益率'] = add_pct(profit_rate_in_open(equity['equity'][-1], capital, ohlc_data, trade_log))
     stats['盈亏总平均/亏损平均'] = round(avg_profit_per_trade(context) / avg_loss_per_losing_trade(context), 2)
     drawdown = create_drawdowns(equity)
 
-    stats['权益最大回撤'] = drawdown['drawdown'].max()
+    stats['权益最大回撤'] = get_round(drawdown['drawdown'].max())
     stats['权益最大回撤时间'] = drawdown['date'][drawdown['drawdown'].idxmax()]
-    stats['权益最大回撤比'] = add_pct(round(drawdown['pct'].max() * 100, 2))
+    stats['权益最大回撤比'] = add_pct(drawdown['pct'].max())
     stats['权益最大回撤比时间'] = drawdown['date'][drawdown['pct'].idxmax()]
     stats['权益最长未创新高的持续时间'] = duration_of_equity_not_reaching_high(equity)
 
-    stats['风险率'] = risk_rate(equity)
-    stats['收益率/风险率'] = return_rate_per_risk_rate(equity, capital, start, end)
-    stats['每手最大亏损'] = largest_loss_losing_trade(context)
-    stats['每手平均盈亏'] = avg_profit_per_trade(context)
+    stats['风险率'] = add_pct(risk_rate(equity))
+    stats['收益率/风险率'] = get_round(return_rate_per_risk_rate(equity, capital, start, end))
+    stats['每手最大亏损'] = get_round(largest_loss_losing_trade(context))
+    stats['每手平均盈亏'] = get_round(avg_profit_per_trade(context))
     stats['盈利率'] = add_pct(return_rate(trade_log, capital))
 
     rate = annualized_return_rate(equity, capital, start, end)
@@ -1154,24 +1157,24 @@ def stats(context):
 
     stats['胜率'] = add_pct(winning_rate(context))
 
-    stats['平均盈利/权益最大回撤'] = round(float(avg_profit_per_winning_trade(context) / drawdown['drawdown'].max()), 2)
-    stats['平均盈利/平均亏损'] = round(avg_profit_per_winning_trade(context) / avg_loss_per_losing_trade(context), 2)
-    stats['平均盈利/平均亏损（多头）'] = round(long_profit_per_winning_trade(context) / long_loss_per_losing_trade(context), 2)
-    stats['平均盈利/平均亏损（空头）'] = round(short_profit_per_winning_trade(context) / short_loss_per_losing_trade(context), 2)
+    stats['平均盈利/权益最大回撤'] = get_round(float(avg_profit_per_winning_trade(context) / drawdown['drawdown'].max()))
+    stats['平均盈利/平均亏损'] = get_round(avg_profit_per_winning_trade(context) / avg_loss_per_losing_trade(context))
+    stats['平均盈利/平均亏损（多头）'] = get_round(long_profit_per_winning_trade(context) / long_loss_per_losing_trade(context))
+    stats['平均盈利/平均亏损（空头）'] = get_round(short_profit_per_winning_trade(context) / short_loss_per_losing_trade(context))
 
-    stats['净利润'] = total_net_profit(equity, capital)
-    stats['净利润（多头）'] = long_net_profit(context)
-    stats['净利润（空头）'] = short_net_profit(context)
+    stats['净利润'] = get_round(total_net_profit(equity, capital))
+    stats['净利润（多头）'] = get_round(long_net_profit(context))
+    stats['净利润（空头）'] = get_round(short_net_profit(context))
 
-    stats['总盈利'] = gross_profit(context)
-    stats['总盈利（多头）'] = gross_long_profit(context)
-    stats['总盈利（空头）'] = gross_short_profit(context)
+    stats['总盈利'] = get_round(gross_profit(context))
+    stats['总盈利（多头）'] = get_round(gross_long_profit(context))
+    stats['总盈利（空头）'] = get_round(gross_short_profit(context))
 
-    stats['总亏损'] = gross_loss(context)
-    stats['总亏损（多头）'] = gross_long_loss(context)
-    stats['总亏损（空头）'] = gross_short_loss(context)
+    stats['总亏损'] = get_round(gross_loss(context))
+    stats['总亏损（多头）'] = get_round(gross_long_loss(context))
+    stats['总亏损（空头）'] = get_round(gross_short_loss(context))
 
-    stats['盈亏比'] = profit_factor(context)
+    stats['盈亏比'] = get_round(profit_factor(context))
     # stats['夏普比率'] = sharpe_ratio(equity['equity'].pct_change())
     # stats['索提诺比率'] = sortino_ratio(equity['equity'].pct_change())
     # stats['测试周期数'] = context.test_days
@@ -1183,9 +1186,9 @@ def stats(context):
     stats['交易次数（多头）'] = num_long_trades(context)
     stats['交易次数（空头）'] = num_short_trades(context)
 
-    stats['盈利比率'] = profit_trades_rate(context)
-    stats['盈利比率（多头）'] = profit_long_trades_rate(context)
-    stats['盈利比率（空头）'] = profit_short_trades_rate(context)
+    stats['盈利比率'] = add_pct(profit_trades_rate(context))
+    stats['盈利比率（多头）'] = add_pct(profit_long_trades_rate(context))
+    stats['盈利比率（空头）'] = add_pct(profit_short_trades_rate(context))
 
     stats['盈利次数'] = num_winning_trades(context)
     stats['盈利次数（多头）'] = num_winning_long_trades(context)
@@ -1200,23 +1203,23 @@ def stats(context):
     stats['持平次数（空头）'] = num_even_short_trades(context)
 
     # 盈利与亏损
-    stats['平均盈亏'] = avg_profit_per_trade(context)
-    stats['平均盈亏（多头）'] = long_profit_per_trade(context)
-    stats['平均盈亏（空头）'] = short_profit_per_trade(context)
+    stats['平均盈亏'] = get_round(avg_profit_per_trade(context))
+    stats['平均盈亏（多头）'] = get_round(long_profit_per_trade(context))
+    stats['平均盈亏（空头）'] = get_round(short_profit_per_trade(context))
 
-    stats['平均盈利'] = avg_profit_per_winning_trade(context)
-    stats['平均盈利（多头）'] = long_profit_per_winning_trade(context)
-    stats['平均盈利（空头）'] = short_profit_per_winning_trade(context)
+    stats['平均盈利'] = get_round(avg_profit_per_winning_trade(context))
+    stats['平均盈利（多头）'] = get_round(long_profit_per_winning_trade(context))
+    stats['平均盈利（空头）'] = get_round(short_profit_per_winning_trade(context))
 
-    stats['平均亏损'] = avg_loss_per_losing_trade(context)
-    stats['平均亏损（多头）'] = long_loss_per_losing_trade(context)
-    stats['平均亏损（空头）'] = short_loss_per_losing_trade(context)
+    stats['平均亏损'] = get_round(avg_loss_per_losing_trade(context))
+    stats['平均亏损（多头）'] = get_round(long_loss_per_losing_trade(context))
+    stats['平均亏损（空头）'] = get_round(short_loss_per_losing_trade(context))
 
-    stats['最大盈利'] = largest_profit_winning_trade(context)
-    stats['最大亏损'] = largest_loss_losing_trade(context)
-    stats['最大盈利/总盈利'] = round(largest_profit_winning_trade(context) / gross_profit(context), 2)
-    stats['最大亏损/总亏损'] = round(largest_loss_losing_trade(context) / gross_loss(context), 2)
-    stats['净利润/总亏损'] = round(total_net_profit(equity, capital) / gross_loss(context), 2)
+    stats['最大盈利'] = get_round(largest_profit_winning_trade(context))
+    stats['最大亏损'] = get_round(largest_loss_losing_trade(context))
+    stats['最大盈利/总盈利'] = get_round(largest_profit_winning_trade(context) / gross_profit(context))
+    stats['最大亏损/总亏损'] = get_round(largest_loss_losing_trade(context) / gross_loss(context))
+    stats['净利润/总亏损'] = get_round(total_net_profit(equity, capital) / gross_loss(context))
     # stats['最大持续盈利次数'] = max_consecutive_winning_trades(context)
     # stats['最大持续亏损次数'] = max_consecutive_losing_trades(context)
 

@@ -255,7 +255,7 @@ class Strategy(StrategyBase):
     def __init__(self, market_event):
         super().__init__(market_event)
         position = self.position[-1]
-        logger.info('position in strategy: {}'.format(position))
+        logger.debug('position in strategy: {}'.format(position))
 
     def buy_even_and_open(self,
                           lots,

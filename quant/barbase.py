@@ -16,9 +16,9 @@ class Current_bar(BarBase):
     def add_new_bar(self, new_bar):
         """不断更新当前行情数据"""
         bar_date = datetime.strptime(new_bar['time'], '%Y/%m/%d')
-        logger.info('---bar_date in barbase---: {}'.format(bar_date))
+        logger.debug('---bar_date in barbase---: {}'.format(bar_date))
         # bar_list_length = len(self._cur_bar_list)
-        logger.info('self._cur_bar_list in barbase: {}'.format(self._cur_bar_list))
+        logger.debug('self._cur_bar_list in barbase: {}'.format(self._cur_bar_list))
         # if bar_list_length == 2:
         #     # self._cur_bar_list.pop(0)
         #     self._cur_bar_list = []

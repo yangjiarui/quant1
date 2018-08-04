@@ -155,7 +155,7 @@ class DataHandler(ABC):
         pass
 
     def prenext(self):
-        logger.info('---------call from main.__load_all_feed-------')
+        logger.debug('---------call from main.__load_all_feed-------')
         self.get_new_bar()
 
     def next(self):
@@ -165,7 +165,7 @@ class DataHandler(ABC):
         self.__update_bar()
         market_event = Context().MarketEvent
         events.put(market_event(self))
-        logger.info('---------------------feedbase.next--------------------')
+        logger.debug('---------------------feedbase.next--------------------')
 
 
 class CSVDataReader(DataHandler):
@@ -216,7 +216,7 @@ class CSVDataReader(DataHandler):
             #     self.skipped = True
             new_bar = __update()
             new_bar_date = datetime.strptime(new_bar['time'], self.date_format)
-            logger.info('---new_bar_date---: {}'.format(new_bar_date))
+            logger.debug('---new_bar_date---: {}'.format(new_bar_date))
             # 根据输入的日期判断数据的范围，从起始时间开始，不断产生new_bar，到结束时间为止
             if self.startdate:
                 # logger.debug("new_bar['time']: {}".format(new_bar['time']))
@@ -227,12 +227,12 @@ class CSVDataReader(DataHandler):
                     new_bar = __update()
                     new_bar_date = datetime.strptime(new_bar['time'], self.date_format)
                     # logger.debug('self.enddate: {}'.format(self.enddate))
-                    logger.info('---new_bar_date---: {}'.format(new_bar_date))
+                    logger.debug('---new_bar_date---: {}'.format(new_bar_date))
 
             if self.enddate:
                 while new_bar_date > self.enddate:
                     raise StopIteration
-            logger.info('new_bar_date in feedbase: {}'.format(new_bar_date))
+            logger.debug('new_bar_date in feedbase: {}'.format(new_bar_date))
             self.cur_bar.add_new_bar(new_bar)
 
         except StopIteration:

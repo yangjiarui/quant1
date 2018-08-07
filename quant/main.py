@@ -251,13 +251,9 @@ class Quant(object):
         total = pd.DataFrame(self.fill.equity.dict)
         logger.debug('-----------self.fill.equity-------------: {}'.format(self.fill.equity))
         logger.debug('-------total---------: {}'.format(total))
-        # with open('total.txt', 'w') as f:
-        #     # f.write(str(total))
-        #     for index, row in total.iterrows():
-        #         f.write(str(row['date']))
-        #         f.write(str(','))
-        #         f.write(str(row['equity']))
-        #         f.write('\n')
+        # total.to_csv('total.csv')
+        # equity = self.fill.equity.df
+        # equity.to_csv('equity.csv')
         logger.debug('-----------total.index----------: {}'.format(total.index))
         logger.debug('-----------total.columns----------: {}'.format(total.columns))
         drawdown = create_drawdowns(total)

@@ -45,9 +45,9 @@ class MyStrategy(Strategy):
         # ma3 = self.indicator.SMA(period=3, index=-1)
         ma10 = self.indicator.SMA(period=10, index=-1)
         close = self.bar.close[:][-1]
-        logger.info('---close in my_strategy---: {}'.format(close))
-        logger.info('ma5: {}'.format(ma5))
-        logger.info('ma10: {}'.format(ma10))
+        logger.debug('---close in my_strategy---: {}'.format(close))
+        logger.debug('ma5: {}'.format(ma5))
+        logger.debug('ma10: {}'.format(ma10))
         # high = self.indicator.high()
         # low = self.indicator.low()
         # last_open = self.indicator.open(2)  # 前n个周期的值，代入n
@@ -55,7 +55,7 @@ class MyStrategy(Strategy):
         # logger.info('average_true_range: {}'.format(average_true_range))
         if ma5 > ma10:
             # self.buy_even_and_open(lots)
-            logger.info('---ma5>ma10---')
+            logger.debug('---ma5>ma10---')
             self.buy_open(lots)
             # open = self.indicator.open()
             # last_open = self.indicator.open(2)
@@ -64,17 +64,17 @@ class MyStrategy(Strategy):
             # self.sell(2)
         elif ma5 < ma10:
             # self.sell_even_and_open(lots)
-            logger.info('---ma5<ma10---')
+            logger.debug('---ma5<ma10---')
             self.sell_open(lots)
             # close = self.indicator.close()
             # logger.info('close in my_strategy: {}'.format(close))
             # self.buy(2)
         if self.position[-1] != 0:
             if ma10 < close:
-                logger.info('---ma10<close---')
+                logger.debug('---ma10<close---')
                 self.buy_close(lots)
             elif ma10 > close:
-                logger.info('---ma10>close---')
+                logger.debug('---ma10>close---')
                 self.sell_close(lots)
 
 

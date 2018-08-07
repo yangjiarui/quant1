@@ -931,8 +931,8 @@ def return_rate_per_risk_rate(equity, capital, start, end):
 
 def get_round(number: float) -> float:
     """保留两位小数"""
-    num = number + 0.005
-    return round(num, 2)
+    # num = number + 0.005
+    return round(number, 2)
 
 
 def add_pct(number: int or float):
@@ -1131,8 +1131,10 @@ def stats(context):
     #     ending_equity(dbal) - total_net_profit(trade_log) - (
     #         beginning_equity(capital)))
     stats['持仓日收益率'] = add_pct(profit_rate_in_open(equity['equity'][-1], capital, ohlc_data, trade_log))
-    stats['盈亏总平均/亏损平均'] = round(avg_profit_per_trade(context) / avg_loss_per_losing_trade(context), 2)
-    drawdown = create_drawdowns(equity)
+    stats['盈亏总平均/亏损平均'] = get_round(avg_profit_per_trade(context) / avg_loss_per_losing_trade(context))
+    # drawdown = create_drawdowns(equity.reset_index())
+    # equity.reset_index().to_csv('equity_in_analysis.csv')
+    drawdown = create_drawdowns(pd.DataFrame(context.fill.equity.dict))
 
     stats['权益最大回撤'] = get_round(drawdown['drawdown'].max())
     stats['权益最大回撤时间'] = drawdown['date'][drawdown['drawdown'].idxmax()]

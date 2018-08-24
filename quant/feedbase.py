@@ -191,11 +191,10 @@ class CSVDataReader(DataHandler):
 
     def __set_bar_date(self, bar):
         """将bar中的time识别为日期格式"""
-        date = bar['time']
+        date = bar['time']  #time
         # logger.debug('date: {}'.format(date))
         return datetime.strptime(str(date), self.date_format).strftime(
             self.date_format)
-
     def get_new_bar(self):
         def __update():
             new_bar = next(self._iteration_data)  # 获取迭代数据的下一组数据
@@ -289,6 +288,8 @@ class CSVDataReader(DataHandler):
             logger.debug("不可能的")
 
         self.preload_bar_list.reverse()
+
+
 
 
 class CSV(CSVDataReader):

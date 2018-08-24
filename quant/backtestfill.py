@@ -646,7 +646,7 @@ class BacktestFill(FillBase):
             order.type = 'Order'
             order.order_type = order_type
             order.date = data_today['date']
-            order.execute_type = f'{order.execute_type} Triggered'
+            order.execute_type = '{order.execute_type} Triggered'
             events.put(order)
 
         for i in self._order_list:

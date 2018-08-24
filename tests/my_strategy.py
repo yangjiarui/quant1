@@ -84,7 +84,8 @@ context.end_date = '2017-12-11'
 
 data = CSV(
     # datapath='../data/IF_cleaned_data.csv',
-    datapath='../data/CFFEX沪深300期货IF主连（修正）.csv',
+    datapath='../data/CFFEX沪深300期货IF主连（修正）.csv',  ###../data/CFFEX沪深300期货IF主连（修正）.csv
+    ##/home/jerry/PycharmProjects/blochain/historical_data/bitcoin-historical-data/new.csv
     # datapath='/home/demlution/桌面/quant/data/IF_cleaned_data.csv',
     instrument='IF',
     startdate=context.start_date,
@@ -112,5 +113,5 @@ trade.set_notify()
 trade.run()
 # logger.info('---my_strategy---: {}'.format(context.feed_list[0].bar.data))
 logger.debug(trade.get_trade_log('IF'))
-trade.plot_partly(instrument='IF')
+#trade.plot_partly(instrument='IF')
 trade.get_analysis(instrument='IF')

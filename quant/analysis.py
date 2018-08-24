@@ -15,7 +15,7 @@ TRADING_DAYS_PER_MONTH = 20
 TRADING_DAYS_PER_WEEK = 5
 # np.set_printoptions(suppress=True)
 # pd.set_option('precision', 4)
-date = datetime.now().strftime('%Y-%m-%d-%H-%M')
+date = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
 
 def create_sharpe_ratio(returns, period=252):
@@ -212,21 +212,30 @@ def duration_of_equity_not_reaching_high(equity):
     max_equity = 0
     duration = pd.Timedelta(0)  # 时间间隔为 0
     date_list = []
-    date_dict = {}
-    for i in range(len(equity.values)):
-        if max_equity < equity.values[i][0]:
+    date_dur = pd.DataFrame(columns=['duration','start','end'])
+    for i in range(equity.shape[0]):
+        if max_equity <= equity.values[i][0]:
             max_equity = equity.values[i][0]
             date_list.append(equity.index[i])
     logger.debug('---date_list---: {}'.format(date_list))
-    for i in range(len(date_list) - 1):
-        duration_ = date_list[i + 1] - date_list[i]
-        if duration < duration_:
-            duration = duration_
-            date_dict[duration] = [date_list[i], date_list[i + 1]]
+    for j in range(len(date_list)-1):   #len()-1
+        duration_ = date_list[j + 1] - date_list[j]
+
+        date_dur=date_dur.append(pd.Series([duration_,date_list[j],date_list[j+1]],index=['duration','start','end']),ignore_index=True)
+        #
+        # if duration < duration_:
+        #     duration = duration_
+        #     date_dict[duration] = [date_list[i], date_list[i + 1]]
     # date = date_dict[max(date_dict)][0] + '-' + date_dict[max(date_dict)][1]
-    start_date = datetime.strftime(date_dict[max(date_dict)][0], '%Y/%m/%d')
-    end_date = datetime.strftime(date_dict[max(date_dict)][1], '%Y/%m/%d')
-    date = start_date + ' - ' + end_date
+    date_dur =date_dur.sort_values('duration')
+    start_date=date_dur.iloc[-1]['start']
+    if equity.iloc[-1].values<=max_equity:
+        deltta=equity.index[-1]-date_list[-1]
+        start_date=date_list[-1]
+        end_date=equity.index[-1]
+    else:
+        end_date = date_dur.iloc[-1]['end']
+    date = start_date.strftime('%Y-%m-%d %H:%M:%S') + ' - ' + end_date.strftime('%Y-%m-%d %H:%M:%S')
     logger.debug('---date in analysis---: {}'.format(date))
     return date
 
@@ -491,6 +500,9 @@ def avg_profit_per_trade(context):
     if n == 0:
         return 0
     return total_net_profit(equity, capital) / n
+
+##jerry
+
 
 
 def avg_profit_per_winning_trade(context):
@@ -870,8 +882,8 @@ def rolling_max_ru(ser, period, min_periods=1):
 #     sharpe = (mean * period - risk_free) / (dev * np.sqrt(period))
 #     return sharpe
 
-
-def sharpe_ratio(rets, initial_cash, test_days, risk_free=0.03, period=365):
+###jerry
+def sharpe_ratio(rets, dev,initial_cash, test_days=None, risk_free=0.03, period=365):
     """
     根据每日的收益计算每日的夏普比率
     夏普比率=（平均年收益率-无风险利率）/收益率的标准离差率
@@ -882,11 +894,11 @@ def sharpe_ratio(rets, initial_cash, test_days, risk_free=0.03, period=365):
     σp：收益率的标准差率（年化标准差率）＝（标准离差/初始资金）/sqrt (测试天数/365)
     Return：每年的夏普比率
     """
-    dev = np.std(rets, axis=0)
-    mean = np.mean(rets, axis=0)
+
+    mean = rets.mean()
     logger.debug('---mean * period---: {}'.format(mean * period))
-    sigma_p = (dev / initial_cash) / np.sqrt(test_days / period)
-    sharpe = (mean * period - risk_free) / (dev * np.sqrt(period))
+#    sigma_p = (dev / initial_cash) / np.sqrt(test_days / period)
+    sharpe = (mean * period - risk_free) / ((dev/initial_cash) / np.sqrt(period/365))
     # sharpe = (0.4898 - risk_free) / sigma_p
     return sharpe
 
@@ -1088,6 +1100,100 @@ def add_pct(number: int or float):
 
 #     return stats
 
+##jerry
+
+def None_repo_log(context):
+    """仓位中存在nan的时间段内,对应的时间之间的差值"""
+    df=context.trade_log
+    q=context.ohlc_data
+    q['order']=pd.Series(range(len(q)), index=q.index)
+    df.index=pd.DatetimeIndex(df.iloc[:,0])
+    df=df.iloc[:,4]
+    w=df[(df==1) | (df==-1)].index
+    w ,_= w.map(lambda x: x.strftime('%Y-%m-%d')),q[q.index==w[0]]['order']-q.iloc[0,-1]
+    dur=_.tolist()
+    for i in range(1,len(df)-1):
+        if df[i] ==0:
+            cur=q[q.index==df.index[i].strftime('%Y-%m-%d')]['order']
+            after=w[w>df.index[i].strftime('%Y-%m-%d')][0]
+            after=q[q.index==after]['order']
+            dur.append(after[0]-cur[0])
+    dur.sort()
+    if df.iloc[-1] == 0:
+        return sum(dur)+1,dur[-1]
+    else:
+        return sum(dur),dur[-1]
+
+def have_repo_log(context):
+    """仓位中存在非nan的时间段内,对应的时间之间的差值"""
+    df = context.trade_log
+    q = context.ohlc_data
+    q['order'] = pd.Series(range(len(q)), index=q.index)
+    df.index = pd.DatetimeIndex(df.iloc[:, 0])
+    df = df.iloc[:, 4]
+    w = df[df==0].index
+    w= w.map(lambda x: x.strftime('%Y-%m-%d'))
+    dur=[]
+    for i in range(len(df)):
+        if df[i]==1 or df[i]==-1:
+            cur = q[q.index == df.index[i].strftime('%Y-%m-%d')]['order']
+            after = w[w > df.index[i].strftime('%Y-%m-%d')][0]
+            after = q[q.index == after]['order']
+            dur.append(after[0] - cur[0])
+    return dur
+
+
+
+def calc_clir_date_range(context,value):
+    """"根据两头日期返回日期之间的K线个数"""
+    q1, q2 = value.split(' ')[0], value.split(' ')[3]
+    res = (context.ohlc_data[context.ohlc_data.index == q2]['order'].values -context.ohlc_data[context.ohlc_data.index == q1]['order'].values)[0]
+    return res
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+def log_profit_or_loss(context):
+    """损益情况的记录"""
+    log=context.trade_log
+    p_or_l=[]
+    ind=[]
+    for i in range(1,len(log)-1):
+        if (log.iloc[i-1,4]==1 or log.iloc[i-1,4]==-1) and log.iloc[i,4]==0:
+            p_or_l.append(log.iloc[i,-1])
+            ind.append(log.index[i].strftime('%Y/%m/%d'))
+    return pd.Series(p_or_l,index=ind)
+
+
+
+
+
+
+
+
+
+
+    #######like.reset_index(0).iloc[:,0].diff(1).map(lambda x: str(x))
+
+
+
+
+
+
+
+
+
+
 
 # -------------------------产生各种统计数据的主要调用函数---------------------------
 
@@ -1115,8 +1221,26 @@ def stats(context):
     stats = OrderedDict()
 
     # 总体数据
-    stats['测试开始时间'] = start.strftime("%Y-%m-%d")
-    stats['测试结束时间'] = end.strftime("%Y-%m-%d")
+    import time
+    stats['报告生成时间']=time.strftime('%Y-%M-%d %H:%M:%S',time.localtime())#  by jerry
+    raw_date_index=context.ohlc_data.index[0]
+    try:
+        res=raw_date_index.strftime('%Y-%m-%d')
+        res='日线'
+    except:
+        try:
+            res=raw_date_index.strftime('%Y/%M/%d')
+            res = '日线'
+        except:
+            try:
+                res = raw_date_index.strftime('%Y-%M-%d %H:%M:%S')
+                res = '分钟级'
+            except:
+                res = raw_date_index.strftime('%Y/%M/%d %H:%M:%S')
+                res = '分钟级'
+    stats['K线周期']=res                                      ########## by jerry
+    stats['测试开始时间'] = start.strftime("%Y-%m-%d %H:%M:%S")
+    stats['测试结束时间'] = end.strftime("%Y-%m-%d %H:%M:%S")
     stats['测试天数'] = (end - start).days + 1
     stats['测试周期数'] = context.count - 1
     stats['指令总数'] = len(context.fill.completed_list)
@@ -1225,6 +1349,55 @@ def stats(context):
     # stats['最大持续盈利次数'] = max_consecutive_winning_trades(context)
     # stats['最大持续亏损次数'] = max_consecutive_losing_trades(context)
 
+    ######新加指标
+    ####jerry
+    a,b=None_repo_log(context=context)
+    stats['空仓周期数']=a
+    stats['最长连续空仓周期数'] =b
+    c=context.trade_log['re_profit'][context.trade_log['re_profit'] != 0]
+    if c[-1]<0:
+        le=len(c)+1
+    else:
+        le=len(c)
+    stats['标准离差']=get_round(np.sqrt(np.sum([(i-stats['平均盈亏'])**2 for i in c])/le))
+    stats['标准离差率']=str(get_round(stats['标准离差']/stats['平均盈亏']*100))+'%'
+    stats['夏普比率']=get_round(sharpe_ratio(rets=equity.pct_change(),dev=stats['标准离差'],initial_cash=context.initial_cash).values[0])
+    stats['最长交易周期']=max(have_repo_log(context))
+    c=log_profit_or_loss(context).reset_index()
+    new=pd.DataFrame()    ######损益Serise
+    new['date'],new['equity']=c.iloc[:,0],c.iloc[:,1]
+    drawdown = create_drawdowns(new)
+    stats['损益最大回撤']=get_round(drawdown['drawdown'].max())
+    stats['损益最大回撤比']=add_pct(drawdown['pct'].max())
+    stats['损益最大回撤时间']= drawdown['date'][drawdown['pct'].idxmax()]
+    stats['损益最大回撤比时间']=drawdown['date'][drawdown['pct'].idxmax()]
+    new.index=pd.DatetimeIndex(new.iloc[:,0])
+    n=new.iloc[:,1:]
+    stats['损益最长未创新高持续时间']=duration_of_equity_not_reaching_high(n)
+    stats['最长未创新高周期数对比']=19*' *'
+    stats['损益最长未创新高周期数']=calc_clir_date_range(context=context,value=stats['损益最长未创新高持续时间'])
+    stats['权益最长未创新高周期数']=calc_clir_date_range(context=context,value=stats['权益最长未创新高的持续时间'])
+    stats['平均交易周期']=get_round(stats['测试周期数']/stats['交易次数'])
+    q = context.trade_log
+    stats['平均交易周期(多头)']=get_round(stats['测试周期数']/len(q[q.iloc[:,2]=='BUY']))
+    stats['平均交易周期(空头)']=get_round(stats['测试周期数']/len(q[q.iloc[:,2]=='SELL']))
+    stats['平均盈利交易周期']=get_round(stats['测试周期数']/stats['盈利次数'])
+    stats['平均盈利交易周期(多头)']=get_round(stats['测试周期数']/stats['盈利次数（多头）'])
+    stats['平均盈利交易周期(空头)']=get_round(stats['测试周期数']/stats['盈利次数（空头）'])
+    stats['平均亏损交易周期']=get_round(stats['测试周期数']/stats['亏损次数'])
+    stats['平均亏损交易周期(多头)']=get_round(stats['测试周期数']/stats['亏损次数（多头）'])
+    stats['平均亏损交易周期(空头)']=get_round(stats['测试周期数']/stats['亏损次数（空头）'])
+  #  stats['平均资金使用额']=len(have_repo_log(context))   ##########Dont KNOW YET
+    stats['最大资金使用额']=get_round(context.fill.margin.df.max()[0])
+    stats['扣除最大盈利后收益率']=str(np.round(((equity.values[-1][0]-context.trade_log['re_profit'].max()-context.initial_cash)/context.initial_cash)*100,3))+'%'
+    stats['扣除最大亏损后收益率']=str(np.round(((equity.values[-1][0]-context.trade_log['re_profit'].min()-context.initial_cash)/context.initial_cash)*100,3))+'%'
+    stats['期间最大权益']=get_round(equity.max()[0])
+    stats['期间最小权益']=get_round(equity.min()[0])
+    stats['手续费']=get_round(context.fill.commission.df.values[-1][0])
+ #   q=pd.Series(context.fill.commission.df.values.reshape(-1))
+   # [q[q.index == i].values[0] for i in have_repo_log(context)]  ###持仓期内的保证金
+  #  stats['平均资金使用率']=np.sum(context.fill.commission.df.values/equity.values)/len(have_repo_log(context))
+  #  stats['最大资金使用率']=
 
 
     # 点数

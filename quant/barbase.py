@@ -4,6 +4,9 @@ from quant.logging_backtest import logger
 from datetime import datetime
 
 
+
+
+
 class BarBase(object):
     pass
 
@@ -15,6 +18,7 @@ class Current_bar(BarBase):
 
     def add_new_bar(self, new_bar):
         """不断更新当前行情数据"""
+
         bar_date = datetime.strptime(new_bar['time'], '%Y/%m/%d')
         logger.debug('---bar_date in barbase---: {}'.format(bar_date))
         # bar_list_length = len(self._cur_bar_list)

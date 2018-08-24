@@ -9,7 +9,7 @@ AIQuant 回测框架
 ## 快速上手
 ### 环境准备
 要使用 AIQuant 回测框架，首先需要做一些简单的环境准备。
-
+＃＃＃＃本项目感谢伟哥的大力支持，相关回测指标请有识之士共同商讨:   contact me : weichat  834235185
 #### 安装Python
 在 https://www.python.org/downloads/ 获取最新版本的 Python。
 安装后，打开 shell，输入 python，应该得到下列内容：
